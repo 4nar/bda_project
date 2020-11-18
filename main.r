@@ -1,11 +1,14 @@
-library(stan)
+library(rstan)
 
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
-df <- read.csv('ligue1-20192020-results.csv')
+df_res <- read.csv('ligue1-20192020-results.csv')
+df_next <- read.csv('ligue1-20192020-cancelled-games.csv')
+df_teams <- read.csv('ligue1-20192020-teams.csv')
 
-stan_data <- list(N=nrow(df), nteams=length(unique(df$home.team)), y1=df$h.g., y2=df$h.a., hometeam=df$home.team, awayteam=df$away.team)
-sm <- rstan::stan_model(file = "model_init.stan")
-
+stan_data <- list(N=nrow(df_res), nteams=length(unique(df_res$home.team)), y1=df_res$h.g., y2=df_res$h.a., hometeam=df_res$home.team, awayteam=df_res$away.team,
+                  next_N=nrow(df_next), next_hometeam=df_next$home.team, next_awayteam=df_next$away.team)
+# sm <- rstan::stan_model(file = "model_init.stan")
+sm <- rstan::stan_model(file = "separate_model.stan")
 model <- rstan::sampling(sm, data = stan_data, control = list(adapt_delta = 0.99, max_treedepth = 15))

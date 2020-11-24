@@ -43,8 +43,8 @@ model {
   home ~ normal(0,100) T[0,];
   
   for (t in 1:nteams){
-    att_star[t] ~ normal(0, 100) T[0,];
-    def_star[t] ~ normal(0, 100) T[0,];
+    att_star[t] ~ normal(0, 1) T[0,];
+    def_star[t] ~ normal(0, 1) T[0,];
   }
   
   for (g in 1:N) {

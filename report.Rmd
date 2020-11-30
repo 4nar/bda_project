@@ -37,11 +37,51 @@ For this analysis, we have used scoresheets data allongside the composition of t
 Considering the fact that our research question is derived from a recent event at the time of writting, it is unlikely to our knowledge than other existing analysis have been made on the same dataset. However, it is worth to mention that our work takes inspiration from other academic works that have been performed on different leagues and seasons, works that are themselves based on decades of scientific research made on sports analytics and prediction models.
 
 
-3. Description of at least two models, for example:
+# 3. Description of the models
 
-    non hierarchical and hierarchical,
-    linear and non linear,
-    variable selection with many models.
+As we have said, our work took inspiration from other academic publications. In particular, "Bayesian hierarchical model for the prediction of football results" by Baio and Blangiardo has been an great source of knowledge and a corner stone for the models we have decided to implement. As its name suggest it, the paper uses a hierarchical model to predict the attacking and defensive strenght of the teams.
+
+The hyperpriors define the mean and standard deviation of a team's capabibilities on both the attacking and defensive side:
+$$
+\mu_{att} \sim \text{Normal}(0, 100) \\
+\tau_{att} \sim \text{Gamma}(0.1, 0.1) \\
+\mu_{def} \sim \text{Normal}(0, 100) \\
+\tau_{def} \sim \text{Gamma}(0.1, 0.1)
+$$
+Leading the following description of the team-specific effects (for each team $t$ in $1,...,T$) modelled as exchangeable from a common normal distribution:
+$$
+\text{att}_{t} \sim \text{Normal}(\mu_{att}, \tau_{att}) \\
+\text{def}_{t} \sim \text{Normal}(\mu_{def}, \tau_{def}) \\
+$$
+
+The home advantage is modelled by a normal prior as well:
+$$
+\text{model} \sim \text{Normal}(0,100)
+$$
+
+Thus, the scoring rate $\theta$ for both team during the g-th game of the season is defined with a log-linear random effect model:
+$$
+\text{log}(\theta_{g,1}) = \text{home} + \text{att}_{h(g)} + \text{def}_{a(g)} \\
+\text{log}(\theta_{g,2}) = \text{att}_{a(g)} + \text{def}_{h(g)}
+$$
+How should one understand this formula ? Well, notice in the second formula how the value of the scoring intensity of the away team $\theta_{g,2}$ is high if its attacking capability $\text{att}_{a(g)}$ is high or if the defensive capability of the home team $\text{def}_{h(g)}$ is high (defensive capabilities are always negative in this definition). Same thing could be said for the first formula but with the addition of the team advantage variable.
+
+There is a small catch however. In order to achieve identifiability of the above model parameters and facilitate the interpretation the results in the end, we have to use a standard set of constraints on the $\text{att}$ and $\text{def}$ variables. The authors opted for a sum-to-zero constraint (which is simply equivalent to centering the variables $\text{att}$ and $\text{def}$):
+$$
+\sum_{t=1}^T \text{att}_{t} = 0 \\
+\sum_{t=1}^T \text{def}_{t} = 0
+$$
+
+Finally, since the goals occurring in the game are rare events with now known rates $\theta_{g,1}$ and $\theta_{g,2}$, Poisson distributions are particularly suited to transform those rates in an actual number of goals for each side $y_{g,1}$ and $y_{g,2}$:
+$$
+y_{gj} | θ_{gj} \sim \text{Poisson}(θ_{gj}),
+$$
+
+In the end, the model can be sumarized by the following sketch that is featured in the paper:
+```{r figurename, echo=FALSE, fig.cap="my caption", out.width = '50%'}
+knitr::include_graphics("images/figure-1.jpg")
+```
+
 
 4. Informative or weakly informative priors, and justification of their choices.
 
@@ -135,6 +175,7 @@ generated quantities {
 }
 
 ```
+
 ## Hierarchical model
 ```{stan, output.var="hierarchical_model", eval = FALSE}
 data {

@@ -1,0 +1,292 @@
+---
+title: "BDA - Assignment 9"
+author: "Anonymous"
+output: 
+  pdf_document: 
+    toc: yes
+    toc_depth: 1
+
+---
+```{r, echo=TRUE, message = FALSE}
+library(aaltobda)
+library(rstan)
+library(rstantools)
+library(ggplot2)
+library(loo)
+df_res <- read.csv('ligue1-20192020-results.csv')
+df_next <- read.csv('ligue1-20192020-cancelled-games.csv')
+df_teams <- read.csv('ligue1-20192020-teams.csv')
+
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+```
+1. Introduction describing
+
+    the motivation
+    the problem
+    and the main modeling idea.
+    Showing some illustrative figure is recommended.
+
+2. Description of the data and the analysis problem. Provide information where the data was obtained, and if it has been previously used in some online case study and how your analysis differs from the existing analyses.
+3. Description of at least two models, for example:
+
+    non hierarchical and hierarchical,
+    linear and non linear,
+    variable selection with many models.
+
+4. Informative or weakly informative priors, and justification of their choices.
+
+
+# 5. Stan code (brms can be used to generate the code, but Stan code needs to be present and explained).
+
+
+## Separate model
+
+
+```{stan, output.var="separate_model", eval = FALSE}
+data {
+  int<lower=0> N;
+  int<lower=0> nteams;
+  int y1[N];
+  int y2[N];
+  int hometeam[N];
+  int awayteam[N];
+  
+  int<lower=0> next_N;
+  int next_hometeam[next_N];
+  int next_awayteam[next_N];
+}
+
+
+parameters {
+  //parameters
+  real<lower=0> home;
+  vector<lower=0>[nteams] att_star;
+  vector<lower=0>[nteams] def_star;
+}
+
+
+transformed parameters{
+  vector[nteams] att;
+  vector[nteams] def;
+  real<lower=0> lambda[N, 2];
+  
+  // center attacking and defending (sum to zero)
+  for (t in 1:nteams){
+    att[t] = att_star[t] - mean(att_star);
+    def[t] = def_star[t] - mean(def_star);
+  }
+  
+  for (g in 1:N){
+    // Average Scoring intensities (accounting for mixing components)
+    lambda[g,1] = exp(home + att[hometeam[g]] + def[awayteam[g]]);
+    lambda[g,2] = exp(att[awayteam[g]] + def[hometeam[g]]);
+  }
+}
+
+
+model {
+  home ~ normal(0,100);
+  
+  for (t in 1:nteams){
+    att_star[t] ~ normal(0, 1);
+    def_star[t] ~ normal(0, 1);
+  }
+  
+  for (g in 1:N) {
+    // Observed number of goals scored by each team
+    y1[g] ~ poisson(lambda[g,1]);
+    y2[g] ~ poisson(lambda[g,2]);
+  }
+}
+
+
+generated quantities {
+  real<lower=0> next_lambda[next_N, 2];
+  int next_y1[next_N];
+  int next_y2[next_N];
+  vector[N] log_lik[2];
+  
+  for (g in 1:next_N){
+    // Average Scoring intensities (accounting for mixing components)
+    next_lambda[g,1] = exp(att[next_hometeam[g]] + def[next_awayteam[g]]);
+    next_lambda[g,2] = exp(att[next_awayteam[g]] + def[next_hometeam[g]]);
+    
+    // Predicted number of goals scored by each team
+    next_y1[g] = poisson_rng(next_lambda[g,1]);
+    next_y2[g] = poisson_rng(next_lambda[g,2]);
+  }
+  
+   for (g in 1:N){
+      log_lik[1,g] = poisson_lpmf(y1[g] | lambda[g,1]);
+      log_lik[2,g] = poisson_lpmf(y2[g] | lambda[g,2]);
+}
+  
+  
+}
+
+```
+## Hierarchical model
+```{stan, output.var="hierarchical_model", eval = FALSE}
+data {
+  int<lower=0> N;
+  int<lower=0> nteams;
+  int y1[N];
+  int y2[N];
+  int hometeam[N];
+  int awayteam[N];
+  
+  int<lower=0> next_N;
+  int next_hometeam[next_N];
+  int next_awayteam[next_N];
+}
+
+
+parameters {
+  //hyperparameters
+  // real mu_att;
+  real<lower=0> sigma_att;
+  
+  // real mu_def;
+  real<lower=0> sigma_def;
+  
+  //parameters
+  real<lower=0> home;
+  
+  vector<lower=0>[nteams] att_star;
+  vector<lower=0>[nteams] def_star;
+}
+
+
+transformed parameters{
+  vector[nteams] att;
+  vector[nteams] def;
+  real<lower=0> lambda[N, 2];
+  
+  // center attacking and defending (sum to zero)
+  for (t in 1:nteams){
+    att[t] = att_star[t] - mean(att_star);
+    def[t] = def_star[t] - mean(def_star);
+  }
+  
+  for (g in 1:N){
+    // Average Scoring intensities (accounting for mixing components)
+    lambda[g,1] = exp(home + att[hometeam[g]] + def[awayteam[g]]);
+    lambda[g,2] = exp(att[awayteam[g]] + def[hometeam[g]]);
+  }
+}
+
+
+model {
+  home ~ normal(0,100);
+  
+  // mu_att ~ normal(0,100) T[0,];
+  sigma_att ~ gamma(0.1,0.1);
+  
+  // mu_def ~ normal(0,100) T[0,];
+  sigma_def ~ gamma(0.1,0.1);
+  
+  for (t in 1:nteams){
+    att_star[t] ~ normal(0, sigma_att); //normal(mu_att, sigma_att) T[0,];
+    def_star[t] ~ normal(0, sigma_def); //normal(mu_def, sigma_def) T[0,];
+  }
+  
+  for (g in 1:N) {
+    // Observed number of goals scored by each team
+    y1[g] ~ poisson(lambda[g,1]);
+    y2[g] ~ poisson(lambda[g,2]);
+  }
+}
+
+
+generated quantities {
+  real<lower=0> next_lambda[next_N, 2];
+  int next_y1[next_N];
+  int next_y2[next_N];
+  vector[N] log_lik[2];
+  
+  for (g in 1:next_N){
+    // Average Scoring intensities (accounting for mixing components)
+    next_lambda[g,1] = exp(att[next_hometeam[g]] + def[next_awayteam[g]]);
+    next_lambda[g,2] = exp(att[next_awayteam[g]] + def[next_hometeam[g]]);
+    
+    // Predicted number of goals scored by each team
+    next_y1[g] = poisson_rng(next_lambda[g,1]);
+    next_y2[g] = poisson_rng(next_lambda[g,2]);
+  }
+  
+     for (g in 1:N){
+      log_lik[1,g] = poisson_lpmf(y1[g] | lambda[g,1]);
+      log_lik[2,g] = poisson_lpmf(y2[g] | lambda[g,2]);
+}
+}
+```
+6. How to the Stan model was run, that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
+
+7. Convergence diagnostics (R, ESS, divergences) and what was done if the convergence was not good with the first try.
+8. Posterior predictive checks and what was done to improve the model.
+
+# 9. Model comparison (e.g. with LOO-CV).
+Here we assess whether there are differences between the proposed models with regard to the $elpd_{loo-cv}$, and if so, which model should be selected according to PSIS-LOO.
+Before we compare the difference in $elpd_{loo-cv}$, we have to make sure that all estimate are reliable. We can analyze these using the Pareto k diagnostic, which is intended to estimate how far an individual leave-one-out distribution is from the full distribution. The Pareto k estimate, in turn, is a diagnostic for Pareto smoothed importance sampling, which is used to approximate the leave-one pointwise predictive distribution for the leave one out cross validation. Data points with k-value greater than 0.7 are often the result of model misspecification and frequently correspond to data points that would be considered outliers. If $k>0.7$, it means leaving out an observation significantly changes the posterior and importance sampling fails to produce reliable estimate. If the $k<0.7$ we can consider the corresponding estimate with a relatively high accuracy. However, large k-values are a useful indicator of model misspecifications, small k-values are not a guarantee that model is well-specified. In case of proposed two models, the PSIS-LOO estimates both for separate and hierarchical models are reliable, and we can compare two models. When we compare models, we conclude that the difference in $elpd_{loo-cv}$ and its scale relative to the approximate standard error of the difference indicates a preference for the hierarchical model. 
+
+```{r}
+model_separate <- readRDS("separate_model.rds")
+model_hierarchical <- readRDS("hierarchical_model.rds") 
+```
+Computing the PSIS-LOO elpd values and the k-values for separate model.
+```{r}
+log_lik_sep <- extract_log_lik(model_separate, merge_chains = FALSE)
+r_eff_sep <- relative_eff(exp(log_lik_sep), cores = 2)
+loo_sep <- loo(log_lik_sep, r_eff = r_eff_sep, cores = 2)
+```
+
+Visualization of k-values for separate model.
+```{r}
+plot(loo_sep,
+     diagnostic = c("k", "n_eff"),
+     label_points = FALSE,
+     main = "PSIS diagnostic plot separate model"
+)
+```
+PSIS-LOO values for separate model.
+```{r}
+loo_sep
+```
+
+
+
+Computing the PSIS-LOO elpd values and the k-values for hierarchical model.
+```{r}
+log_lik_hierarchical <- extract_log_lik(model_hierarchical,
+                                        merge_chains = FALSE)
+r_eff_hierarchical <- relative_eff(exp(log_lik_hierarchical), cores = 2)
+loo_hierarchical <- loo(log_lik_hierarchical, r_eff = r_eff_hierarchical, 
+                        cores = 2)
+```
+Visualization of k-values for hierarchical model.
+```{r}
+plot(loo_hierarchical,
+     diagnostic = c("k", "n_eff"),
+     label_points = FALSE,
+     main = "PSIS diagnostic plot hierarchical model")
+```
+PSIS-LOO values for hierarchical model.
+```{r}
+loo_hierarchical
+```
+
+
+Comparing the models on expected log predictive density
+```{r}
+loo_compare(loo_sep, loo_hierarchical)
+```
+
+
+10. Predictive performance assessment if applicable (e.g. classification accuracy) and evaluation of practical usefulness of the accuracy.
+
+11. Sensitivity analysis with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
+12. Discussion of issues and potential improvements.
+13. Conclusion what was learned from the data analysis.
+14. Self-reflection of what the group learned while making the project.
+

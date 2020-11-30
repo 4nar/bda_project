@@ -13,16 +13,8 @@ data {
 
 
 parameters {
-  //hyperparameters
-  // real mu_att;
-  real<lower=0> sigma_att;
-  
-  // real mu_def;
-  real<lower=0> sigma_def;
-  
   //parameters
   real<lower=0> home;
-  
   vector<lower=0>[nteams] att_star;
   vector<lower=0>[nteams] def_star;
 }
@@ -50,15 +42,9 @@ transformed parameters{
 model {
   home ~ normal(0,100);
   
-  // mu_att ~ normal(0,100) T[0,];
-  sigma_att ~ gamma(0.1,0.1);
-  
-  // mu_def ~ normal(0,100) T[0,];
-  sigma_def ~ gamma(0.1,0.1);
-  
   for (t in 1:nteams){
-    att_star[t] ~ normal(0, sigma_att); //normal(mu_att, sigma_att) T[0,];
-    def_star[t] ~ normal(0, sigma_def); //normal(mu_def, sigma_def) T[0,];
+    att_star[t] ~ normal(0, 1);
+    def_star[t] ~ normal(0, 1);
   }
   
   for (g in 1:N) {
@@ -85,9 +71,10 @@ generated quantities {
     next_y2[g] = poisson_rng(next_lambda[g,2]);
   }
   
-     for (g in 1:N){
+   for (g in 1:N){
       log_lik[1,g] = poisson_lpmf(y1[g] | lambda[g,1]);
       log_lik[2,g] = poisson_lpmf(y2[g] | lambda[g,2]);
 }
+  
+  
 }
-

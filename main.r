@@ -10,8 +10,8 @@ df_res <- read.csv('ligue1-20192020-results.csv')
 df_next <- read.csv('ligue1-20192020-cancelled-games.csv')
 df_teams <- read.csv('ligue1-20192020-teams.csv')
 
-stan_data <- list(N=nrow(df_res), nteams=length(unique(df_res$home.team)), y1=df_res$h.g., y2=df_res$a.g, hometeam=df_res$home.team, awayteam=df_res$away.team,
-                  next_N=nrow(df_next), next_hometeam=df_next$home.team, next_awayteam=df_next$away.team)
+#stan_data <- list(N=nrow(df_res), nteams=length(unique(df_res$home.team)), y1=df_res$h.g., y2=df_res$a.g, hometeam=df_res$home.team, awayteam=df_res$away.team,
+#                  next_N=nrow(df_next), next_hometeam=df_next$home.team, next_awayteam=df_next$away.team)
 
 # HIERARCHICAL MODEL
 # sm <- rstan::stan_model(file = "model_init.stan")
@@ -22,12 +22,12 @@ stan_data <- list(N=nrow(df_res), nteams=length(unique(df_res$home.team)), y1=df
 model_hierarchical <- readRDS("hierarchical_model.rds") 
 
 # SEPARATE MODEL
-sm <- rstan::stan_model(file = "football_separate.stan")
-model_separate <- rstan::sampling(sm, data = stan_data, chains=4, iter=20000, warmup=4000,
-                         control = list(adapt_delta = 0.99, max_treedepth = 15))
-model_separate
-saveRDS(model_separate, "separate_model.rds")
-
+# sm <- rstan::stan_model(file = "football_separate.stan")
+# model_separate <- rstan::sampling(sm, data = stan_data, chains=4, iter=20000, warmup=4000,
+#                         control = list(adapt_delta = 0.99, max_treedepth = 15))
+#model_separate
+#saveRDS(model_separate, "separate_model.rds")
+model_separate <- readRDS("separate_model.rds")
 
 # Computing the PSIS-LOO elpd values and the k-values for separate model.
 
@@ -47,7 +47,7 @@ plot(loo_sep,
 )
 
 # PSIS-LOO values for separate model.
-print(loo_sep)
+loo_sep
 
 
 #Computing the PSIS-LOO elpd values and the k-values for hierarchical model.
@@ -66,5 +66,4 @@ plot(loo_hierarchical,
      main = "PSIS diagnostic plot hierarchical model")
 
 #PSIS-LOO values for hierarchical model.
-
-print(loo_hierarchical)
+loo_hierarchical

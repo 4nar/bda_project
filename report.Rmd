@@ -31,7 +31,12 @@ But first, let's start introducing a little bit of abstraction to understand how
 The approach we had was much simpler. Intuitively, we hypothesized that each team in France had some abilities to attack and defend that we would like to evaluate based on the previous results. Then, when looking at a fixture we could combine those values to know how much goals the home and away sides are likely to score or concede. We also added a some fixed bonus to the home side to represente the home advantage in football. Indeed, as they are playing in front of their own fans, it has been shown that home teams tend to win a little bit more frequently and we wanted to take this information into account as well. Knowing this information is particularly important in our case study because it enables us to simulate games were the home advantage's influence is removed (games that are played without public because of the COVID restrictions for instance).
 
 
-2. Description of the data and the analysis problem. Provide information where the data was obtained, and if it has been previously used in some online case study and how your analysis differs from the existing analyses.
+# 2. Description of the data and the analysis problem. 
+
+For this analysis, we have used scoresheets data allongside the composition of the remaining fixtures of the 2019-2020 Ligue 1 season from the internet website Soccerway.com.
+Considering the fact that our research question is derived from a recent event at the time of writting, it is unlikely to our knowledge than other existing analysis have been made on the same dataset. However, it is worth to mention that our work takes inspiration from other academic works that have been performed on different leagues and seasons, works that are themselves based on decades of scientific research made on sports analytics and prediction models.
+
+
 3. Description of at least two models, for example:
 
     non hierarchical and hierarchical,

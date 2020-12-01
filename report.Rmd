@@ -110,7 +110,7 @@ Apart from this and the supression of the hyperpriors, the rest of the model is 
 # 4. Informative or weakly informative priors, and justification of their choices.
 
 
-# 5. Stan code (brms can be used to generate the code, but Stan code needs to be present and explained).
+# 5. Stan code.
 
 
 ## Separate model
@@ -300,7 +300,7 @@ generated quantities {
 7. Convergence diagnostics (R, ESS, divergences) and what was done if the convergence was not good with the first try.
 8. Posterior predictive checks and what was done to improve the model.
 
-# 9. Model comparison (e.g. with LOO-CV).
+# 9. Model comparison.
 Here we assess whether there are differences between the proposed models with regard to the $elpd_{loo-cv}$, and if so, which model should be selected according to PSIS-LOO.
 Before we compare the difference in $elpd_{loo-cv}$, we have to make sure that all estimate are reliable. We can analyze these using the Pareto k diagnostic, which is intended to estimate how far an individual leave-one-out distribution is from the full distribution. The Pareto k estimate, in turn, is a diagnostic for Pareto smoothed importance sampling, which is used to approximate the leave-one pointwise predictive distribution for the leave one out cross validation. Data points with k-value greater than 0.7 are often the result of model misspecification and frequently correspond to data points that would be considered outliers. If $k>0.7$, it means leaving out an observation significantly changes the posterior and importance sampling fails to produce reliable estimate. If the $k<0.7$ we can consider the corresponding estimate with a relatively high accuracy. However, large k-values are a useful indicator of model misspecifications, small k-values are not a guarantee that model is well-specified. In case of proposed two models, the PSIS-LOO estimates both for separate and hierarchical models are reliable, and we can compare two models. When we compare models, we conclude that the difference in $elpd_{loo-cv}$ and its scale relative to the approximate standard error of the difference indicates a preference for the hierarchical model. 
 
@@ -358,6 +358,7 @@ loo_compare(loo_sep, loo_hierarchical)
 
 
 # 10. Predictive performance assessment.
+
 
 Based on the results that we obtained from the generated quantities blocks, a nice qualitative performance assessment that we can do is to look at the predicted ligue 1 table and see if the results make sense in both models.
 
@@ -521,7 +522,15 @@ difference(sorted_current_table, predict(table=sep_predicted_table, model = mode
 ```
 
 11. Sensitivity analysis with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
-12. Discussion of issues and potential improvements.
+
+
+# 12. Discussion of issues and potential improvements.
+
+
+From a footballing perspective, our model is not tacking into account some important aspects that might have an impact the performances on the pitch. In particular, the fatigue coming from the match repetition, especially for the team that are still engaged in other competitions, is not modelled here. For instance, Paris reached the final of the UEFA Champion's League this year while Lyon lost in the semi-finals round against Bayern and both were qualified for the final rounds of the Coupe De France. Without a doubt, this would have had a negative impact on their performances in Ligue 1. 
+An other interesting case would be Lille. They struggled a lot during the first half of the season, but when they started playing only once a week after 2 early eliminations from the Champion's League and Coupe De France, they have started winning consistantly and looked like they would be able to continue on the same run of form for the rest of the season. Conversely, Bordeaux did have a solid first half of the season but did not have the same momentum towards the last few games. We believe that managing (somehow) to introduce this idea of momentum inside the model would have give more accurate predictions.
+
+
 13. Conclusion what was learned from the data analysis.
 14. Self-reflection of what the group learned while making the project.
 

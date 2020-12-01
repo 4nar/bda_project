@@ -1,6 +1,6 @@
 ---
-title: "BDA - Assignment 9"
-author: "Anonymous"
+title: "BDA - Project"
+author: "Leo Vuylsteker (876373), Anar Abetayeva (903068)"
 output: 
   pdf_document: 
     toc: yes

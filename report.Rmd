@@ -23,6 +23,7 @@ rstan_options(auto_write = TRUE)
 ```
 
 
+
 # 1. Introduction describing
 
 
@@ -34,13 +35,17 @@ But first, let's start introducing a little bit of abstraction to understand how
 The approach we had was much simpler. Intuitively, we hypothesized that each team in France had some abilities to attack and defend that we would like to evaluate based on the previous results. Then, when looking at a fixture we could combine those values to know how much goals the home and away sides are likely to score or concede. We also added a some fixed bonus to the home side to represente the home advantage in football. Indeed, as they are playing in front of their own fans, it has been shown that home teams tend to win a little bit more frequently and we wanted to take this information into account as well. Knowing this information is particularly important in our case study because it enables us to simulate games were the home advantage's influence is removed (games that are played without public because of the COVID restrictions for instance).
 
 
+
 # 2. Description of the data and the analysis problem. 
+
 
 For this analysis, we have used scoresheets data allongside the composition of the remaining fixtures of the 2019-2020 Ligue 1 season from the internet website Soccerway.com.
 Considering the fact that our research question is derived from a recent event at the time of writting, it is unlikely to our knowledge than other existing analysis have been made on the same dataset. However, it is worth to mention that our work takes inspiration from other academic works that have been performed on different leagues and seasons, works that are themselves based on decades of scientific research made on sports analytics and prediction models.
 
 
+
 # 3. Description of the models
+
 
 ## Hierarchical model
 
@@ -92,6 +97,7 @@ In football, the assumption that the team capabilities are sampled from common h
 Apart from this and the supression of the hyperpriors, the rest of the model is similar.
 
 
+
 # 4. Informative or weakly informative priors, and justification of their choices.
 
 
@@ -120,11 +126,11 @@ $$
 $$
 
 
+
 # 5. Stan code.
 
 
 ## Separate model
-
 
 ```{stan, output.var="separate_model", eval = FALSE}
 data {
@@ -211,6 +217,7 @@ generated quantities {
 ```
 
 ## Hierarchical model
+
 ```{stan, output.var="hierarchical_model", eval = FALSE}
 data {
   int<lower=0> N;
@@ -305,12 +312,19 @@ generated quantities {
 }
 }
 ```
+
+
+
 6. How to the Stan model was run, that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
 
 7. Convergence diagnostics (R, ESS, divergences) and what was done if the convergence was not good with the first try.
 8. Posterior predictive checks and what was done to improve the model.
 
+
+
 # 9. Model comparison.
+
+
 Here we assess whether there are differences between the proposed models with regard to the $elpd_{loo-cv}$, and if so, which model should be selected according to PSIS-LOO.
 Before we compare the difference in $elpd_{loo-cv}$, we have to make sure that all estimate are reliable. We can analyze these using the Pareto k diagnostic, which is intended to estimate how far an individual leave-one-out distribution is from the full distribution. The Pareto k estimate, in turn, is a diagnostic for Pareto smoothed importance sampling, which is used to approximate the leave-one pointwise predictive distribution for the leave one out cross validation. Data points with k-value greater than 0.7 are often the result of model misspecification and frequently correspond to data points that would be considered outliers. If $k>0.7$, it means leaving out an observation significantly changes the posterior and importance sampling fails to produce reliable estimate. If the $k<0.7$ we can consider the corresponding estimate with a relatively high accuracy. However, large k-values are a useful indicator of model misspecifications, small k-values are not a guarantee that model is well-specified. In case of proposed two models, the PSIS-LOO estimates both for separate and hierarchical models are reliable, and we can compare two models. When we compare models, we conclude that the difference in $elpd_{loo-cv}$ and its scale relative to the approximate standard error of the difference indicates a preference for the hierarchical model. 
 
@@ -365,6 +379,7 @@ Comparing the models on expected log predictive density
 ```{r}
 loo_compare(loo_sep, loo_hierarchical)
 ```
+
 
 
 # 10. Predictive performance assessment.
@@ -430,6 +445,7 @@ sorted_current_table <- data.frame(pos = 1:20, sorted_current_table)
 
 sorted_current_table
 ```
+
 
 Then we could add the information contained in our predictions:
 ```{r}
@@ -500,6 +516,7 @@ predict(table=hie_predicted_table, model = model_hierarchical, threshold=0.11)
 predict(table=sep_predicted_table, model = model_separate, threshold=0.2)
 ```
 
+
 The information relative to the goal scored and conceided have been hidden since the values are modeled with the mean values that do not correspond to integers. Because of this, the goal difference predicted for games is also never exactly equal to 0 (meaning that the model will never predict draws). Hence, we have manually tuned threshold values to ensure that the proportion of draws predicted is close enough to the proportion of draws observed in real life.
 
 As we expected the separate model does not have the tendency of the hierarchical to pull the extreme points values towards the mean: 
@@ -531,7 +548,9 @@ difference(sorted_current_table, predict(table=sep_predicted_table, model = mode
 
 ```
 
+
 11. Sensitivity analysis with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
+
 
 
 # 12. Discussion of issues and potential improvements.

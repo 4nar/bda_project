@@ -13,11 +13,9 @@ library(rstan)
 library(rstantools)
 library(ggplot2)
 library(loo)
-<<<<<<< HEAD
 library(bayesplot)
-=======
 library(glue)
->>>>>>> 4e6b2f138b072a0a1e75746cece08d1706e25e67
+
 df_res <- read.csv('ligue1-20192020-results.csv')
 df_next <- read.csv('ligue1-20192020-cancelled-games.csv')
 df_teams <- read.csv('ligue1-20192020-teams.csv')
@@ -25,16 +23,11 @@ df_teams <- read.csv('ligue1-20192020-teams.csv')
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 ```
-<<<<<<< HEAD
+
 ```{r}
 model_separate <- readRDS("separate_model_opt.rds")
 model_hierarchical <- readRDS("hierarchical_model_opt.rds") 
 ```
-1. Introduction describing
-=======
->>>>>>> 4e6b2f138b072a0a1e75746cece08d1706e25e67
-
-
 
 # 1. Introduction describing
 
@@ -43,52 +36,8 @@ In 2020, because of the COVID-19 outbrake, the football world has experienced on
 
 Also in France, numerous alternatives were proposed by club owners to avoid 'freezing' the season, and even though they were not retained in the end, one did stand out from a scientific point of view... In an interview with the French media L'Equipe in april 2020, Lille president Gerard Lopez said 'We can imagine a more scientific calculation model in which we would simulate the results of the last ten games, according to the points taken at home or away this season, to obtain a ranking after 38 games'. Such models based on Bayesian theory not only exist, but are used by bookmakers to predict the outcomes of a season. But how reliable are they in reality? What kind of impact thoses predictions would have had on the final Ligue 1 table? Would Lopez's team have managed to secure a place in the Champions League at the expense of Rennes or Marseille in the remaining matches? We will try to answer those questions in this report by creating our own 2020 Ligue 1 simulation model.
 
-<<<<<<< HEAD
-## Common model design
 
 
-The number of goals scored by the home and by the away team in the g-th game of the season, where g indicates the game and $g=1,..,G=279$ is modeled as independent Poisson distribution for each team. We model the vector of observed goals $y=(y_{g1}, y_{g2})$ as
-
-
-$y_{gj} | \lambda_{gj} \sim Poisson(\lambda_{gj})$
-
-
-where the parameters $\lambda=(\lambda_{g1}, \lambda_{g2})$ represent the scoring intensity in the g-th game for the team playing at home (j=1) and away (j=2), respectively. These parameters are modeled using a log-linear random effect model
-
-
-$log(\lambda_{g1}) = home + att_{h(g)} + def_{a(g)}$, $\lambda_{g1} = \exp(home + att_{h(g)} + def_{a(g)})$
-
-
-$log(\lambda_{g2}) = att_{a(g)} + def_{h(g)}$, $\lambda_{g2} = \exp(att_{a(g)} + def_{h(g)})$
-
-
-
-where $h(g)$ and $a(g)$ indicates the teams which played g-th game, and $h(g), a(g) = 1,..,T$ 
-
-
-
-
-## Separate model
-
-![The DAG representation of the Separate model](/home/anar/BDA/R_projects/project/img/sep_model.png) 
-
-
-$home \sim N(0,100)$
-
-
-For each $t = 1,..,T$, the team specific effects are modeled from separate distributions:
-
-
-$att_t \sim N(0, 1)$, $def_t \sim N(0, 1)$
-
-
-We introduce sum-to zero constraint on the team-specific parameters:
-
-
-$\sum_{t=1}^{T} att_t = 0$, $\sum_{t=1}^{T} def_t = 0$
-
-The rest of the procedure is same for both models and described in common model design part.
-=======
 But first, let's start introducing a little bit of abstraction to understand how we can predict the outcome of a football game. Unfortunately for us, there would never be a perfectly accurate answer to that question as football is such an unpredictable game. The sport itself is full of David vs Goliath stories and there would be so much parameters to took into account that it would not be a dead end to try reaching very high level accuracies for this project.
 The approach we had was much simpler. Intuitively, we hypothesized that each team in France had some abilities to attack and defend that we would like to evaluate based on the previous results. Then, when looking at a fixture we could combine those values to know how much goals the home and away sides are likely to score or concede. We also added a some fixed bonus to the home side to represente the home advantage in football. Indeed, as they are playing in front of their own fans, it has been shown that home teams tend to win a little bit more frequently and we wanted to take this information into account as well. Knowing this information is particularly important in our case study because it enables us to simulate games were the home advantage's influence is removed (games that are played without public because of the COVID restrictions for instance).
 
@@ -187,9 +136,50 @@ $$
 
 # 5. Stan code.
 
+## Common model design
+
+
+The number of goals scored by the home and by the away team in the g-th game of the season, where g indicates the game and $g=1,..,G=279$ is modeled as independent Poisson distribution for each team. We model the vector of observed goals $y=(y_{g1}, y_{g2})$ as
+
+
+$y_{gj} | \lambda_{gj} \sim Poisson(\lambda_{gj})$
+
+
+where the parameters $\lambda=(\lambda_{g1}, \lambda_{g2})$ represent the scoring intensity in the g-th game for the team playing at home (j=1) and away (j=2), respectively. These parameters are modeled using a log-linear random effect model
+
+
+$log(\lambda_{g1}) = home + att_{h(g)} + def_{a(g)}$, $\lambda_{g1} = \exp(home + att_{h(g)} + def_{a(g)})$
+
+
+$log(\lambda_{g2}) = att_{a(g)} + def_{h(g)}$, $\lambda_{g2} = \exp(att_{a(g)} + def_{h(g)})$
+
+
+
+where $h(g)$ and $a(g)$ indicates the teams which played g-th game, and $h(g), a(g) = 1,..,T$ 
+
+
+
 
 ## Separate model
->>>>>>> 4e6b2f138b072a0a1e75746cece08d1706e25e67
+
+![The DAG representation of the Separate model](/home/anar/BDA/R_projects/project/img/sep_model.png) 
+
+
+$home \sim N(0,100)$
+
+
+For each $t = 1,..,T$, the team specific effects are modeled from separate distributions:
+
+
+$att_t \sim N(0, 1)$, $def_t \sim N(0, 1)$
+
+
+We introduce sum-to zero constraint on the team-specific parameters:
+
+
+$\sum_{t=1}^{T} att_t = 0$, $\sum_{t=1}^{T} def_t = 0$
+
+The rest of the procedure is same for both models and described in common model design part.
 
 ```{stan, output.var="separate_model", eval = FALSE}
 data {
@@ -277,7 +267,6 @@ generated quantities {
 
 ## Hierarchical model
 
-<<<<<<< HEAD
 
 The key difference between separate and hierarchical model is that in hierarchical model team-specific effects are modeled from common distribution. This model design infers two outcome variables are correlated, as teams playing one game interact with each other.
 
@@ -303,8 +292,7 @@ $\sigma_{att} \sim Gamma(0.1,0.1)$, $\sigma_{def} \sim Gamma(0.1,0.1)$
 
 The rest of the model design is common for separate and hierarchical models.
 
-=======
->>>>>>> 4e6b2f138b072a0a1e75746cece08d1706e25e67
+
 ```{stan, output.var="hierarchical_model", eval = FALSE}
 data {
   int<lower=0> N;
@@ -399,13 +387,7 @@ generated quantities {
 }
 }
 ```
-<<<<<<< HEAD
-=======
 
-
-
-6. How to the Stan model was run, that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
->>>>>>> 4e6b2f138b072a0a1e75746cece08d1706e25e67
 
 Here, using unobservable hyperparameters $\sigma_{att}$, $\sigma_{def}$, the inherent hierarchical nature implies a form of correlation between observable variables $y_{g1}$ and $y_{g2}$. 
 
@@ -810,11 +792,6 @@ difference(sorted_current_table, predict(table=sep_predicted_table, model = mode
 
 
 11. Sensitivity analysis with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
-<<<<<<< HEAD
-12. Discussion of issues and potential improvements.
-Take win steaks into account -> the more a team win, the better it's chances of winning should be
-=======
-
 
 
 # 12. Discussion of issues and potential improvements.
@@ -824,7 +801,6 @@ From a footballing perspective, our model is not tacking into account some impor
 An other interesting case would be Lille. They struggled a lot during the first half of the season, but when they started playing only once a week after 2 early eliminations from the Champion's League and Coupe De France, they have started winning consistantly and looked like they would be able to continue on the same run of form for the rest of the season. Conversely, Bordeaux did have a solid first half of the season but did not have the same momentum towards the last few games. We believe that managing (somehow) to introduce this idea of momentum inside the model would have give more accurate predictions.
 
 
->>>>>>> 4e6b2f138b072a0a1e75746cece08d1706e25e67
 13. Conclusion what was learned from the data analysis.
 14. Self-reflection of what the group learned while making the project.
 

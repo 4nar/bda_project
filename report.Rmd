@@ -46,23 +46,13 @@ Considering the fact that our research question is derived from a recent event a
 
 As we have said, our work took inspiration from other academic publications. In particular, "Bayesian hierarchical model for the prediction of football results" by Baio and Blangiardo has been an great source of knowledge and a corner stone for the models we have decided to implement. As its name suggest it, the paper uses a hierarchical model to predict the attacking and defensive strenght of the teams.
 
-The hyperpriors define the mean and standard deviation of a team's capabibilities on both the attacking and defensive side:
-$$
-\mu_{att} \sim \text{Normal}(0, 100) \\
-\tau_{att} \sim \text{Gamma}(0.1, 0.1) \\
-\mu_{def} \sim \text{Normal}(0, 100) \\
-\tau_{def} \sim \text{Gamma}(0.1, 0.1)
-$$
+The hyperpriors $\mu_{att}$,$\tau_{att}$ and $\mu_{def}$,$\tau_{def}$  define the mean and standard deviation of a team's capabibilities on both the attacking and defensive side.
 Leading the following description of the team-specific effects (for each team $t$ in $1,...,T$) modelled as exchangeable from a common normal distribution:
 $$
 \text{att}_{t} \sim \text{Normal}(\mu_{att}, \tau_{att}) \\
 \text{def}_{t} \sim \text{Normal}(\mu_{def}, \tau_{def}) \\
 $$
-
-The home advantage is modelled by a normal prior as well:
-$$
-\text{model} \sim \text{Normal}(0,100)
-$$
+The home advantage is modelled by the random variable home.
 
 Thus, the scoring rate $\theta$ for both team during the g-th game of the season is defined with a log-linear random effect model:
 $$
@@ -99,15 +89,35 @@ The MCMC sampling has proved to be way faster with our model than the one in the
 
 In football, the assumption that the team capabilities are sampled from common hyperprior distribution is difficult to justify in the context of the French Ligue 1. Indeed, the levels of the teams in the top flight are far from being homogeneous. There is Paris Saint-Germain, alone at the very top of the charts, a bunch of good teams competing for the european spots like Marseille, Rennes, Lille, Nice, Monaco or Lyon and other teams like Toulouse which are simply not good enough. The issue arising from hierarchical models in this case is that the best teams appear to perform worse and the worst teams appear to perform better in the simulations since in both case the results are pulled towards the mean values for the team cappabilities. To mitigate this problem, the authors have implemented 3 different bins with dinstinct hyperpriors values corresponding to the top, the mid-table, and the bottom teams. However, the number of bins is purely arbitrary and based on a priori definition spread by the sports media. In Ligue 1, it would be difficult to know the optimal number of bins and that is why we opted for a completely separate (un-pooled) model which consider each team as unique and should produce better predictions than the hierarchical model, at the cost of a harder MCMC sampling.
 
-In the separate model, the team-specific effects (for each team $t$ in $1,...,T$) are modelled as follows:
-$$
-\text{att}_t \sim \text{Normal}(0, 1) \\
-\text{def}_t \sim \text{Normal}(0, 1)
-$$
 Apart from this and the supression of the hyperpriors, the rest of the model is similar.
 
 
 # 4. Informative or weakly informative priors, and justification of their choices.
+
+
+## Hierarchical model
+
+Since it is really difficult to assess objectively the home advantage and the attacking and offensive capabilities of the teams as we do not have a population basis, we decided to stick to the following noninformative set of hyperpriors and priors:
+
+$$
+\mu_{att} \sim \text{Normal}(0, 100) \\
+\tau_{att} \sim \text{Gamma}(0.1, 0.1) \\
+\mu_{def} \sim \text{Normal}(0, 100) \\
+\tau_{def} \sim \text{Gamma}(0.1, 0.1)
+$$
+
+$$
+\text{home} \sim \text{Normal}(0,100)
+$$
+This way, we hoped that the prior distributions will play a minimal role in the posterior distributions and that the inferences will be unaffected by information external to the actual data.
+
+## Separate model
+
+For the same reasons, the team-specific effects (for each team $t$ in $1,...,T$) are modelled as follows in the separate model:
+$$
+\text{att}_t \sim \text{Normal}(0, 1) \\
+\text{def}_t \sim \text{Normal}(0, 1)
+$$
 
 
 # 5. Stan code.

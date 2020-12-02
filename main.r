@@ -10,24 +10,25 @@ df_res <- read.csv('ligue1-20192020-results.csv')
 df_next <- read.csv('ligue1-20192020-cancelled-games.csv')
 df_teams <- read.csv('ligue1-20192020-teams.csv')
 
-#stan_data <- list(N=nrow(df_res), nteams=length(unique(df_res$home.team)), y1=df_res$h.g., y2=df_res$a.g, hometeam=df_res$home.team, awayteam=df_res$away.team,
-#                  next_N=nrow(df_next), next_hometeam=df_next$home.team, next_awayteam=df_next$away.team)
+stan_data <- list(N=nrow(df_res), nteams=length(unique(df_res$home.team)), y1=df_res$h.g., y2=df_res$a.g, hometeam=df_res$home.team, awayteam=df_res$away.team,
+                  next_N=nrow(df_next), next_hometeam=df_next$home.team, next_awayteam=df_next$away.team)
 
 # HIERARCHICAL MODEL
-# sm <- rstan::stan_model(file = "model_init.stan")
-# model_hierarchical <- rstan::sampling(sm, data = stan_data, iter=8000, warmup=2000,
-#                         control = list(adapt_delta = 0.99, max_treedepth = 15))
-# model_hierarchical
-# saveRDS(model_hierarchical, "hierarchical_model.rds")
-model_hierarchical <- readRDS("hierarchical_model.rds") 
+sm <- rstan::stan_model(file = "model_init.stan")
+model_hierarchical <- rstan::sampling(sm, data = stan_data, iter=10000, warmup=2000,
+control = list(adapt_delta = 0.99, max_treedepth = 15), seed=42)
+model_hierarchical
+saveRDS(model_hierarchical, "hierarchical_model_opt.rds")
+#model_hierarchical <- readRDS("hierarchical_model_opt.rds") 
 
 # SEPARATE MODEL
-# sm <- rstan::stan_model(file = "football_separate.stan")
-# model_separate <- rstan::sampling(sm, data = stan_data, chains=4, iter=20000, warmup=4000,
-#                         control = list(adapt_delta = 0.99, max_treedepth = 15))
+sm <- rstan::stan_model(file = "football_separate.stan")
+model_separate <- rstan::sampling(sm, data = stan_data, chains=4, iter=20000, warmup=4000,
+                         control = list(adapt_delta = 0.99, max_treedepth = 15))
+model_separate <- rstan::sampling(sm, data = stan_data, chains=4, iter=12000, seed=42)
 #model_separate
-#saveRDS(model_separate, "separate_model.rds")
-model_separate <- readRDS("separate_model.rds")
+saveRDS(model_separate, "separate_model_opt.rds")
+#model_separate <- readRDS("separate_model.rds")
 
 # Computing the PSIS-LOO elpd values and the k-values for separate model.
 

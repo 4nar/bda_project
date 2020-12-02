@@ -13,12 +13,17 @@ library(rstan)
 library(rstantools)
 library(ggplot2)
 library(loo)
+library(bayesplot)
 df_res <- read.csv('ligue1-20192020-results.csv')
 df_next <- read.csv('ligue1-20192020-cancelled-games.csv')
 df_teams <- read.csv('ligue1-20192020-teams.csv')
 
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
+```
+```{r}
+model_separate <- readRDS("separate_model_opt.rds")
+model_hierarchical <- readRDS("hierarchical_model_opt.rds") 
 ```
 1. Introduction describing
 
@@ -39,9 +44,50 @@ rstan_options(auto_write = TRUE)
 
 # 5. Stan code (brms can be used to generate the code, but Stan code needs to be present and explained).
 
+## Common model design
+
+
+The number of goals scored by the home and by the away team in the g-th game of the season, where g indicates the game and $g=1,..,G=279$ is modeled as independent Poisson distribution for each team. We model the vector of observed goals $y=(y_{g1}, y_{g2})$ as
+
+
+$y_{gj} | \lambda_{gj} \sim Poisson(\lambda_{gj})$
+
+
+where the parameters $\lambda=(\lambda_{g1}, \lambda_{g2})$ represent the scoring intensity in the g-th game for the team playing at home (j=1) and away (j=2), respectively. These parameters are modeled using a log-linear random effect model
+
+
+$log(\lambda_{g1}) = home + att_{h(g)} + def_{a(g)}$, $\lambda_{g1} = \exp(home + att_{h(g)} + def_{a(g)})$
+
+
+$log(\lambda_{g2}) = att_{a(g)} + def_{h(g)}$, $\lambda_{g2} = \exp(att_{a(g)} + def_{h(g)})$
+
+
+
+where $h(g)$ and $a(g)$ indicates the teams which played g-th game, and $h(g), a(g) = 1,..,T$ 
+
+
+
 
 ## Separate model
 
+![The DAG representation of the Separate model](/home/anar/BDA/R_projects/project/img/sep_model.png) 
+
+
+$home \sim N(0,100)$
+
+
+For each $t = 1,..,T$, the team specific effects are modeled from separate distributions:
+
+
+$att_t \sim N(0, 1)$, $def_t \sim N(0, 1)$
+
+
+We introduce sum-to zero constraint on the team-specific parameters:
+
+
+$\sum_{t=1}^{T} att_t = 0$, $\sum_{t=1}^{T} def_t = 0$
+
+The rest of the procedure is same for both models and described in common model design part.
 
 ```{stan, output.var="separate_model", eval = FALSE}
 data {
@@ -126,7 +172,34 @@ generated quantities {
 }
 
 ```
+
 ## Hierarchical model
+
+
+The key difference between separate and hierarchical model is that in hierarchical model team-specific effects are modeled from common distribution. This model design infers two outcome variables are correlated, as teams playing one game interact with each other.
+
+![The DAG representation of the Hierarchical model](/home/anar/BDA/R_projects/project/img/hier_model.png) 
+
+$home \sim N(0,100)$
+
+
+For each $t = 1,..,T$, the team specific effects are modeled as exchangeable from a common distribution:
+
+
+$att_t \sim N(0, \sigma_{att})$, $def_t \sim N(0, \sigma_{def})$
+
+
+We introduce sum-to zero constraint on the team-specific parameters:
+
+
+$\sum_{t=1}^{T} att_t = 0$, $\sum_{t=1}^{T} def_t = 0$
+
+The hyper-priors of the attack and defense effects are modeled independently using flat prior distributions:
+
+$\sigma_{att} \sim Gamma(0.1,0.1)$, $\sigma_{def} \sim Gamma(0.1,0.1)$
+
+The rest of the model design is common for separate and hierarchical models.
+
 ```{stan, output.var="hierarchical_model", eval = FALSE}
 data {
   int<lower=0> N;
@@ -221,19 +294,188 @@ generated quantities {
 }
 }
 ```
-6. How to the Stan model was run, that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
 
-7. Convergence diagnostics (R, ESS, divergences) and what was done if the convergence was not good with the first try.
-8. Posterior predictive checks and what was done to improve the model.
+Here, using unobservable hyperparameters $\sigma_{att}$, $\sigma_{def}$, the inherent hierarchical nature implies a form of correlation between observable variables $y_{g1}$ and $y_{g2}$. 
+
+# 6. How to the Stan model was run, that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
+
+```{r eval=FALSE}
+sm <- rstan::stan_model(file = "football_separate.stan")
+model_separate <- rstan::sampling(sm, data = stan_data, chains=4, iter=12000, seed=42)
+```
+
+```{r eval=FALSE}
+sm <- rstan::stan_model(file = "model_init.stan")
+model_hierarchical <- rstan::sampling(sm, data = stan_data, iter=10000, warmup=2000,
+                                      control = list(adapt_delta = 0.99, max_treedepth = 15), seed=42)
+```
+# 7. Convergence diagnostics (R, ESS, divergences) and what was done if the convergence was not good with the first try.
+
+## $\hat{R}$: potential scale reduction statistic
+
+$\hat{R}$ statistic measures the ratio of the average variance of draws within each chain to the variance of the pooled draws across chains. In case the chains have not converged to a common distribution, the $\hat{R}$ statistic will be greater than one. 
+
+We can see from the plot of $\hat{R}$ values of separate model that all values are close to one, thus the model have converged. 
+```{r}
+rhats_sep <- rhat(model_separate)
+mcmc_rhat(rhats_sep)
+```
+We also conclude that hierarchical model have converged as all of $\hat{R}$ values are around 1, thus the model have converged.
+```{r}
+rhats_hier <- rhat(model_hierarchical)
+mcmc_rhat(rhats_hier)
+```
+
+
+## Effective sample size
+The effective sample size is an estimate of the number of independent draws from the posterior distribution of the estimand of interest. The draws within a Markov chain are not independent if there is autocorrelation, the effective sample size, $n_{eff}$, is usually smaller than the total sample size, $N$. The larger the ratio on $n_{eff}$ to $N$ the better. If there are ratios $\frac{n_{eff}}{N}$ less than 0.1, there might be autocorrelation.
+
+From the plot of ratios on $n_{eff}$ to $N$ of separate model we can see that all ratios are more than 0.1, we can conclude that there is no autocorrelation. 
+```{r}
+ratios_sep <- neff_ratio(model_separate)
+mcmc_neff(ratios_sep)
+```
+
+For hierarchical model there are some parameters with ratio on $n_{eff}$ to $N$ less than 0.1. We probably have autocorrelation for those parameters, and it means that model is needed to be run with more iterations. 
+```{r}
+ratios_hier <- neff_ratio(model_hierarchical)
+mcmc_neff(ratios_hier)
+```
+## Divergences
+There were no divergent iterations for separate model.
+```{r}
+divergent <- get_sampler_params(model_separate, inc_warmup=FALSE)[[1]][,'divergent__']
+sum(divergent)
+```
+Hierarchical model had no divergent iterations as well.
+```{r}
+divergent <- get_sampler_params(model_hierarchical, inc_warmup=FALSE)[[1]][,'divergent__']
+sum(divergent)
+``` 
+For separate model during the first try the default number of iterations which is 2000 were performed, and Bulk Effective Sample Size was too low. We needed to increase the number of iterations to 12000 as with fewer iterations $\hat{R}$ values were acceptable, but ratios on $n_{eff}$ to $N$ for some parameters were still lower than 0.1 with less number of iterations.
+
+
+
+# 8. Posterior predictive checks and what was done to improve the model.
+
+
+## Separate model posterior predictive checks
+Compare histogram of $y_{g1}$ and $y_{g2}$ to histograms of $y\_rep_{g1}$ and $y\_rep_{g2}$
+
+```{r}
+y_rep1_sep <- as.matrix(model_separate, pars='y_rep1')
+y_1 <- df_res$h.g.
+ppc_hist(y_1, y_rep1_sep[1:8, ], bandwidth=1)
+```
+
+```{r}
+y_rep2_sep <- as.matrix(model_separate, pars='y_rep2')
+y_2 <- df_res$a.g.
+ppc_hist(y_2, y_rep2_sep[1:8, ], bandwidth=1)
+```
+
+Compare density estimate of $y_{g1}$ and $y_{g2}$ to density estimates of a bunch of $y\_rep_{g1}$ and $y\_rep_{g2}$
+
+```{r}
+ppc_dens_overlay(y_1, y_rep1_sep[1:100, ])
+```
+
+```{r}
+ppc_dens_overlay(y_2, y_rep2_sep[1:100, ])
+```
+
+Compare proportions of zeros in $y_{g1}$ and $y_{g2}$ to the distribution of that proportion over all $y\_rep_{g1}$ and $y\_rep_{g2}$
+
+```{r}
+prop_zero <- function(x) mean(x == 0)
+print(prop_zero(y_1))
+ppc_stat(y_1, y_rep1_sep, stat="prop_zero")
+```
+
+```{r}
+print(prop_zero(y_2))
+ppc_stat(y_2, y_rep2_sep, stat="prop_zero")
+```
+
+Two statistics in a scatterplot
+
+```{r}
+ppc_stat_2d(y_1, y_rep1_sep, stat=c("mean", "sd"))
+```
+
+```{r}
+ppc_stat_2d(y_2, y_rep2_sep, stat=c("mean", "sd"))
+```
+
+Distribution of predictive errors
+
+```{r}
+ppc_error_hist(y_1, y_rep1_sep[1:4, ], bandwidth=1) + xlim(-10, 10)
+```
+```{r}
+ppc_error_hist(y_2, y_rep2_sep[1:4, ], bandwidth=1) + xlim(-10, 10)
+```
+
+## Hierarchical model posterior predictive checks
+Compare histogram of $y_{g1}$ and $y_{g2}$ to histograms of $y\_rep_{g1}$ and $y\_rep_{g2}$
+
+```{r}
+y_rep1_hier <- as.matrix(model_hierarchical, pars='y_rep1')
+ppc_hist(y_1, y_rep1_hier[1:8, ], bandwidth=1)
+```
+
+```{r}
+y_rep2_hier <- as.matrix(model_hierarchical, pars='y_rep2')
+ppc_hist(y_2, y_rep2_hier[1:8, ], bandwidth=1)
+```
+
+Compare density estimate of $y_{g1}$ and $y_{g2}$ to density estimates of a bunch of $y\_rep_{g1}$ and $y\_rep_{g2}$
+
+```{r}
+ppc_dens_overlay(y_1, y_rep1_hier[1:100, ])
+```
+
+```{r}
+ppc_dens_overlay(y_2, y_rep2_hier[1:100, ])
+```
+
+Compare proportions of zeros in $y_{g1}$ and $y_{g2}$ to the distribution of that proportion over all $y\_rep_{g1}$ and $y\_rep_{g2}$
+
+```{r}
+prop_zero <- function(x) mean(x == 0)
+print(prop_zero(y_1))
+ppc_stat(y_1, y_rep1_hier, stat="prop_zero")
+```
+
+```{r}
+print(prop_zero(y_2))
+ppc_stat(y_2, y_rep2_hier, stat="prop_zero")
+```
+
+Two statistics in a scatterplot
+
+```{r}
+ppc_stat_2d(y_1, y_rep1_hier, stat=c("mean", "sd"))
+```
+
+```{r}
+ppc_stat_2d(y_2, y_rep2_hier, stat=c("mean", "sd"))
+```
+
+Distribution of predictive errors
+
+```{r}
+ppc_error_hist(y_1, y_rep1_hier[1:4, ], bandwidth=1) + xlim(-10, 10)
+```
+```{r}
+ppc_error_hist(y_2, y_rep2_hier[1:4, ], bandwidth=1) + xlim(-10, 10)
+```
 
 # 9. Model comparison (e.g. with LOO-CV).
 Here we assess whether there are differences between the proposed models with regard to the $elpd_{loo-cv}$, and if so, which model should be selected according to PSIS-LOO.
 Before we compare the difference in $elpd_{loo-cv}$, we have to make sure that all estimate are reliable. We can analyze these using the Pareto k diagnostic, which is intended to estimate how far an individual leave-one-out distribution is from the full distribution. The Pareto k estimate, in turn, is a diagnostic for Pareto smoothed importance sampling, which is used to approximate the leave-one pointwise predictive distribution for the leave one out cross validation. Data points with k-value greater than 0.7 are often the result of model misspecification and frequently correspond to data points that would be considered outliers. If $k>0.7$, it means leaving out an observation significantly changes the posterior and importance sampling fails to produce reliable estimate. If the $k<0.7$ we can consider the corresponding estimate with a relatively high accuracy. However, large k-values are a useful indicator of model misspecifications, small k-values are not a guarantee that model is well-specified. In case of proposed two models, the PSIS-LOO estimates both for separate and hierarchical models are reliable, and we can compare two models. When we compare models, we conclude that the difference in $elpd_{loo-cv}$ and its scale relative to the approximate standard error of the difference indicates a preference for the hierarchical model. 
 
-```{r}
-model_separate <- readRDS("separate_model.rds")
-model_hierarchical <- readRDS("hierarchical_model.rds") 
-```
+
 Computing the PSIS-LOO elpd values and the k-values for separate model.
 ```{r}
 log_lik_sep <- extract_log_lik(model_separate, merge_chains = FALSE)
@@ -287,6 +529,7 @@ loo_compare(loo_sep, loo_hierarchical)
 
 11. Sensitivity analysis with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
 12. Discussion of issues and potential improvements.
+Take win steaks into account -> the more a team win, the better it's chances of winning should be
 13. Conclusion what was learned from the data analysis.
 14. Self-reflection of what the group learned while making the project.
 

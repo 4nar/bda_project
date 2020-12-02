@@ -43,6 +43,7 @@ transformed parameters{
     // Average Scoring intensities (accounting for mixing components)
     lambda[g,1] = exp(home + att[hometeam[g]] + def[awayteam[g]]);
     lambda[g,2] = exp(att[awayteam[g]] + def[hometeam[g]]);
+    
   }
 }
 
@@ -74,6 +75,8 @@ generated quantities {
   int next_y1[next_N];
   int next_y2[next_N];
   vector[N] log_lik[2];
+  real y_rep1[N];
+  real y_rep2[N];
   
   for (g in 1:next_N){
     // Average Scoring intensities (accounting for mixing components)
@@ -86,6 +89,8 @@ generated quantities {
   }
   
      for (g in 1:N){
+      y_rep1[g] = poisson_rng(lambda[g,1]);
+      y_rep2[g] = poisson_rng(lambda[g,2]);
       log_lik[1,g] = poisson_lpmf(y1[g] | lambda[g,1]);
       log_lik[2,g] = poisson_lpmf(y2[g] | lambda[g,2]);
 }

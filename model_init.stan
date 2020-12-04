@@ -52,10 +52,10 @@ model {
   home ~ normal(0,100);
   
   // mu_att ~ normal(0,100) T[0,];
-  sigma_att ~ gamma(0.1,0.1);
+  sigma_att ~ gamma(5,15);
   
   // mu_def ~ normal(0,100) T[0,];
-  sigma_def ~ gamma(0.1,0.1);
+  sigma_def ~ gamma(5,15);
   
   for (t in 1:nteams){
     att_star[t] ~ normal(0, sigma_att); //normal(mu_att, sigma_att) T[0,];

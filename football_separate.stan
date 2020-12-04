@@ -9,6 +9,9 @@ data {
   int<lower=0> next_N;
   int next_hometeam[next_N];
   int next_awayteam[next_N];
+
+  real<lower=0> sigma_att;
+  real<lower=0> sigma_def;
 }
 
 
@@ -43,8 +46,8 @@ model {
   home ~ normal(0,100);
   
   for (t in 1:nteams){
-    att_star[t] ~ normal(0, 1);
-    def_star[t] ~ normal(0, 1);
+    att_star[t] ~ normal(0, sigma_att);
+    def_star[t] ~ normal(0, sigma_def);
   }
   
   for (g in 1:N) {

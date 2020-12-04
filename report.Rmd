@@ -763,11 +763,11 @@ predict(table=sep_predicted_table, model = model_separate, threshold=0.2)
 The information relative to the goal scored and conceided have been hidden since the values are modeled with the mean values that do not correspond to integers. Because of this, the goal difference predicted for games is also never exactly equal to 0 (meaning that the model will never predict draws). Hence, we have manually tuned threshold values to ensure that the proportion of draws predicted is close enough to the proportion of draws observed in real life.
 
 As we expected the separate model does not have the tendency of the hierarchical to pull the extreme points values towards the mean: 
-* The hierarchical model predicts that good teams like Rennes and Lille will obtain 23 and 20 additional points each while the separate models is more optimistic for then with 25 and 26 points each. 
-* The hierarchical model predicts that Dijon, a team playing in the bottom half of the table, will obtain 9 additional points each while the separate models is more pessimistic with only 4 points.
-* Other major changes in prediction included a tighter 3rd place race between Lille and Rennes with the separate model, a major fall for Reims especially for the hierarchical model.
+* The hierarchical model predicts that a good team like Lille will obtain 20 additional points each while the separate models is more optimistic for then with 24 points.
+* The hierarchical model predicts that Dijon, a team playing in the bottom half of the table, will obtain 6 additional points each while the separate models is more pessimistic with only 4 points.
+* Other major changes in prediction included a tighter 3rd place race between Lille and Rennes with the separate model.
 
-However, for the most part, both models predicted a very similar final tables where the major changes compared to the 'freezed season' include a surprising come back from Bordeaux which would have seen them ending up in the Europa league spots alongside Lyon (instead of Nice and Reims).
+However, for the most part, both models predicted a very similar final tables where the major changes compared to the 'freezed season' include a surprising come back from Bordeaux which would have seen them ending up in the Europa league spots alongside Lyon (instead of Nice and Reims). Both also predict a major fall from grace for Reims and Angers, typically defensive sides, but also Monaco one of the best attack of the division but who struggled a lot on the defensive side.
 Here are the predicted progressions and regressions in the table compared to the freezed table:
 ```{r}
 

@@ -26,27 +26,49 @@ rstan_options(auto_write = TRUE)
 
 ```{r}
 model_separate <- readRDS("separate_model_opt.rds")
-model_hierarchical <- readRDS("model_hierarchical_5_15.rds") 
+model_hierarchical <- readRDS("model_hierarchical_5_15_upd.rds") 
 ```
 
 # 1. Introduction describing
 
-In 2020, because of the COVID-19 outbreak, the football world has experienced one of the biggest economic crisis in its history and national championships all around Europe had to be interrupted for several weeks. In an economy that revolves mostly around Sports broadcasting contracts, match day revenues, and player sales, stop playing games for a long period of time is an unbearable situation. Most leagues in Europe started playing games without home and away fans, before and after their domestic lockdowns, despite the risks of contamination between the players. However, in some countries, such as France, Scotland and Belgium, national leagues had to be 'freezed' (=terminated) approximately 10 match days short compared to a regular season, not without controversy. Indeed, on top of the aforementioned economics impacts, a lot of football club representatives in those countries considered themselves wronged by this decision. Based on the following fixtures and momentum in the past few games, they felt like their team could have reached much more desirable spots in the league table (that would have allowed them to avoid relegation or to reach promotion and european competitions for instance) if they were allowed to play the remaining games. And because some teams would have arguably had easier fixtures coming up than others it is very difficult to deny those claims. In addition, there are usually a lot of surprises towards the end of a season because of the uncertain nature of the sport. In the French Ligue 1 for instance, 71% of the teams have changed places over the last 10 games of season historically.
+In 2020, because of the COVID-19 outbreak, the football world has experienced one of the biggest economic crisis in its history and national championships all around Europe had to be interrupted for several weeks. In an economy that revolves mostly around Sports broadcasting contracts, match day revenues, and player sales, to stop playing games for a long period of time is an unbearable situation. Most leagues in Europe started playing games without home and away fans, before and after their domestic lockdowns, despite the risks of contamination between the players. However, in some countries, such as France, Scotland and Belgium, national leagues had to be 'freezed' (=terminated) approximately 10 match days short compared to a regular season, not without controversy. Indeed, on top of the aforementioned economics impacts, a lot of football club representatives in those countries considered themselves wronged by this decision. Based on the following fixtures and momentum in the past few games, they felt like their team could have reached much more desirable spots in the league table (that would have allowed them to avoid relegation or to reach promotion and European competitions for instance) if they were allowed to play the remaining games. And because some teams would have arguably had easier fixtures coming up than others it is very difficult to deny those claims. In addition, there are usually a lot of surprises towards the end of a season because of the uncertain nature of the sport. In the French Ligue 1 for instance, 71% of the teams have changed places over the last 10 games of season historically.
 
-Also in France, numerous alternatives were proposed by club owners to avoid 'freezing' the season, and even though they were not retained in the end, one did stand out from a scientific point of view... In an interview with the French media L'Equipe in april 2020, Lille president Gerard Lopez said 'We can imagine a more scientific calculation model in which we would simulate the results of the last ten games, according to the points taken at home or away this season, to obtain a ranking after 38 games'. Such models based on Bayesian theory not only exist, but are used by bookmakers to predict the outcomes of a season. But how reliable are they in reality? What kind of impact thoses predictions would have had on the final Ligue 1 table? Would Lopez's team have managed to secure a place in the Champions League at the expense of Rennes or Marseille in the remaining matches? We will try to answer those questions in this report by creating our own 2020 Ligue 1 simulation model.
-
+Also in France, numerous alternatives were proposed by club owners to avoid 'freezing' the season, and even though they were not retained in the end, one did stand out from a scientific point of view... In an interview with the French media L'Equipe in April 2020, Lille president Gerard Lopez said 'We can imagine a more scientific calculation model in which we would simulate the results of the last ten games, according to the points taken at home or away this season, to obtain a ranking after 38 games'. Such models based on Bayesian theory not only exist, but are used by bookmakers to predict the outcomes of a season. But how reliable are they in reality? What kind of impact those predictions would have had on the final Ligue 1 table? Would Lopez's team have managed to secure a place in the Champions League at the expense of Rennes or Marseille in the remaining matches? We will try to answer those questions in this report by creating our own 2020 Ligue 1 simulation model.
 
 
 But first, let's start introducing a little bit of abstraction to understand how we can predict the outcome of a football game. Unfortunately for us, there would never be a perfectly accurate answer to that question as football is such an unpredictable game. The sport itself is full of David vs Goliath stories and there would be so much parameters to took into account that it would not be a dead end to try reaching very high level accuracies for this project.
-The approach we had was much simpler. Intuitively, we hypothesized that each team in France had some abilities to attack and defend that we would like to evaluate based on the previous results. Then, when looking at a fixture we could combine those values to know how much goals the home and away sides are likely to score or concede. We also added a some fixed bonus to the home side to represente the home advantage in football. Indeed, as they are playing in front of their own fans, it has been shown that home teams tend to win a little bit more frequently and we wanted to take this information into account as well. Knowing this information is particularly important in our case study because it enables us to simulate games were the home advantage's influence is removed (games that are played without public because of the COVID restrictions for instance).
+The approach we had was much simpler. Intuitively, we hypothesized that each team in France had some abilities to attack and defend that we would like to evaluate based on the previous results. Then, when looking at a fixture we could combine those values to know how much goals the home and away sides are likely to score or concede. We also added a some fixed bonus to the home side to represent the home advantage in football. Indeed, as they are playing in front of their own fans, it has been shown that home teams tend to win a little bit more frequently and we wanted to take this information into account as well. Knowing this information is particularly important in our case study because it enables us to simulate games were the home advantage's influence is removed (games that are played without public because of the COVID restrictions for instance). From the plot below, we can see from our data how the scores depending on whether team plays home or away are distributed, and it is clear that teams playing home perform better. 
+
+```{r}
+require(gridExtra)
+plot1 <- ggplot(df_res, aes(x=h.g.))+geom_density(color="darkblue", fill="lightblue")+geom_vline(xintercept = mean(df_res$h.g.), color="blue", linetype="dashed", size=1)
+plot2 <- ggplot(df_res, aes(x=a.g.))+geom_density(color="coral", fill="lightcoral")+geom_vline(xintercept = mean(df_res$a.g.), color="blue", linetype="dashed", size=1)
+grid.arrange(plot1, plot2, ncol=2)
+```
 
 
 
 # 2. Description of the data and the analysis problem. 
 
 
-For this analysis, we have used scoresheets data allongside the composition of the remaining fixtures of the 2019-2020 Ligue 1 season from the internet website Soccerway.com.
-Considering the fact that our research question is derived from a recent event at the time of writting, it is unlikely to our knowledge than other existing analysis have been made on the same dataset. However, it is worth to mention that our work takes inspiration from other academic works that have been performed on different leagues and seasons, works that are themselves based on decades of scientific research made on sports analytics and prediction models.
+For this analysis, we have used score sheets data alongside the composition of the remaining fixtures of the 2019-2020 Ligue 1 season from the internet website Soccerway.com.
+Considering the fact that our research question is derived from a recent event at the time of writing, it is unlikely to our knowledge than other existing analysis have been made on the same data set. However, it is worth to mention that our work takes inspiration from other academic works that have been performed on different leagues and seasons, works that are themselves based on decades of scientific research made on sports analytics and prediction models.
+
+Data set contains home team name, away team name, identifier for a home team, identifier for an away team, number of goals scored by home team and number of goals scored by away team. The Table 1 demonstrates basic structure of the data, we also can see that team identifiers are uniquely associated with each team. For example, 'Nice' always associated with identifier 11, whether they play home or away, as in the games 228 and 146. 
+
+```{r, echo=FALSE, results='asis'}
+set.seed(42)
+Sys.setlocale('LC_ALL','C')
+df_merged = merge(df_res, df_teams, by.x='home.team', by.y = 'index')
+names(df_merged)[names(df_merged) == 'team'] <- 'home.team.name'
+df_merged = merge(df_merged, df_teams, by.x='away.team', by.y = 'index')
+names(df_merged)[names(df_merged) == 'team'] <- 'away.team.name'
+col_order <- c("home.team.name", "away.team.name", "home.team",
+                "away.team", "h.g.", "a.g.")
+df_merged <- df_merged[, col_order]
+df_merged <- df_merged[sample(nrow(df_merged)),]
+knitr::kable(df_merged[1:5, ], caption = "Table 1: The data for the 2019-2020 Ligue 1 season")
+```
 
 
 
@@ -55,22 +77,22 @@ Considering the fact that our research question is derived from a recent event a
 
 ## Hierarchical model
 
-As we have said, our work took inspiration from other academic publications. In particular, "Bayesian hierarchical model for the prediction of football results" by Baio and Blangiardo has been an great source of knowledge and a corner stone for the models we have decided to implement. As its name suggest it, the paper uses a hierarchical model to predict the attacking and defensive strenght of the teams.
+As we have said, our work took inspiration from other academic publications. In particular, "Bayesian hierarchical model for the prediction of football results" by Baio and Blangiardo has been an great source of knowledge and a corner stone for the models we have decided to implement. As its name suggest it, the paper uses a hierarchical model to predict the attacking and defensive strength of the teams.
 
-The hyperpriors $\mu_{att}$,$\tau_{att}$ and $\mu_{def}$,$\tau_{def}$  define the mean and standard deviation of a team's capabibilities on both the attacking and defensive side.
-Leading the following description of the team-specific effects (for each team $t$ in $1,...,T$) modelled as exchangeable from a common normal distribution:
+The hyperpriors $\mu_{att}$,$\sigma_{att}$ and $\mu_{def}$,$\sigma_{def}$  define the mean and standard deviation of a team's capabilities on both the attacking and defensive side.
+Leading the following description of the team-specific effects (for each team $t$ in $1,...,T$) modeled as exchangeable from a common normal distribution:
 $$
-\text{att}_{t} \sim \text{Normal}(\mu_{att}, \tau_{att}) \\
-\text{def}_{t} \sim \text{Normal}(\mu_{def}, \tau_{def}) \\
+\text{att}_{t} \sim \text{Normal}(\mu_{att}, \sigma_{att}) \\
+\text{def}_{t} \sim \text{Normal}(\mu_{def}, \sigma_{def}) \\
 $$
-The home advantage is modelled by the random variable home.
+The home advantage is modeled by the random variable home.
 
 Thus, the scoring rate $\theta$ for both team during the g-th game of the season is defined with a log-linear random effect model:
 $$
 \text{log}(\theta_{g,1}) = \text{home} + \text{att}_{h(g)} + \text{def}_{a(g)} \\
 \text{log}(\theta_{g,2}) = \text{att}_{a(g)} + \text{def}_{h(g)}
 $$
-How should one understand this formula ? Well, notice in the second formula how the value of the scoring intensity of the away team $\theta_{g,2}$ is high if its attacking capability $\text{att}_{a(g)}$ is high or if the defensive capability of the home team $\text{def}_{h(g)}$ is high (defensive capabilities are always negative in this definition). Same thing could be said for the first formula but with the addition of the team advantage variable.
+How should one understand this formula? Well, notice in the second formula how the value of the scoring intensity of the away team $\theta_{g,2}$ is high if its attacking capability $\text{att}_{a(g)}$ is high or if the defensive capability of the home team $\text{def}_{h(g)}$ is high (defensive capabilities are always negative in this definition). Same thing could be said for the first formula but with the addition of the team advantage variable.
 
 There is a small catch however. In order to achieve identifiability of the above model parameters and facilitate the interpretation the results in the end, we have to use a standard set of constraints on the $\text{att}$ and $\text{def}$ variables. The authors opted for a sum-to-zero constraint (which is simply equivalent to centering the variables $\text{att}$ and $\text{def}$):
 $$
@@ -83,22 +105,19 @@ $$
 y_{gj} | \theta_{gj} \sim \text{Poisson}(\theta_{gj}),
 $$
 
-In the end, the model can be sumarized by the following sketch that is featured in the paper:
 
-
-
-In our own model, we finded out that the attacking and defending hyperpriors did not need to be defined as strictly as they are in the paper. In particular, since we only care about the spreading of the team-specific effect $att_t$ and $def_t$ to differenciate the teams (the information about the mean values are lost with the sum-to-zero constraint), we figured out that we might as well eliminate the hyperpriors relative to the mean values and model the team specific effect simply as:
+In our own model, we found out that the attacking and defending hyperpriors did not need to be defined as strictly as they are in the paper. In particular, since we only care about the spreading of the team-specific effect $att_t$ and $def_t$ to differentiate the teams (the information about the mean values are lost with the sum-to-zero constraint), we figured out that we might as well eliminate the hyperpriors relative to the mean values and model the team specific effect simply as:
 $$
-\text{att}_t \sim \text{Normal}(0, \tau_{att}) \\
-\text{def}_t \sim \text{Normal}(0, \tau_{def})
+\text{att}_t \sim \text{Normal}(0, \sigma_{att}) \\
+\text{def}_t \sim \text{Normal}(0, \sigma_{def})
 $$
 The MCMC sampling has proved to be way faster with our model than the one in the paper with the addition of $\mu_{att}$ and $\mu_{def}$ while maintaining sensible results.
 
 ## Separate model
 
-In football, the assumption that the team capabilities are sampled from common hyperprior distribution is difficult to justify in the context of the French Ligue 1. Indeed, the levels of the teams in the top flight are far from being homogeneous. There is Paris Saint-Germain, alone at the very top of the charts, a bunch of good teams competing for the european spots like Marseille, Rennes, Lille, Nice, Monaco or Lyon and other teams like Toulouse which are simply not good enough. The issue arising from hierarchical models in this case is that the best teams appear to perform worse and the worst teams appear to perform better in the simulations since in both case the results are pulled towards the mean values for the team cappabilities. To mitigate this problem, the authors have implemented 3 different bins with dinstinct hyperpriors values corresponding to the top, the mid-table, and the bottom teams. However, the number of bins is purely arbitrary and based on a priori definition spread by the sports media. In Ligue 1, it would be difficult to know the optimal number of bins and that is why we opted for a completely separate (un-pooled) model which consider each team as unique and should produce better predictions than the hierarchical model, at the cost of a harder MCMC sampling.
+In football, the assumption that the team capabilities are sampled from common hyperprior distribution is difficult to justify in the context of the French Ligue 1. Indeed, the levels of the teams in the top flight are far from being homogeneous. There is Paris Saint-Germain, alone at the very top of the charts, a bunch of good teams competing for the European spots like Marseille, Rennes, Lille, Nice, Monaco or Lyon and other teams like Toulouse which are simply not good enough. The issue arising from hierarchical models in this case is that the best teams appear to perform worse and the worst teams appear to perform better in the simulations since in both case the results are pulled towards the mean values for the team capabilities. To mitigate this problem, the authors have implemented 3 different bins with distinct hyperpriors values corresponding to the top, the mid-table, and the bottom teams. However, the number of bins is purely arbitrary and based on a prior definition spread by the sports media. In Ligue 1, it would be difficult to know the optimal number of bins and that is why we opted for a completely separate (un-pooled) model which consider each team as unique and should produce better predictions than the hierarchical model, at the cost of a harder MCMC sampling.
 
-Apart from this and the supression of the hyperpriors, the rest of the model is similar.
+Apart from this and the suppression of the hyperpriors, the rest of the model is similar.
 
 
 
@@ -107,13 +126,11 @@ Apart from this and the supression of the hyperpriors, the rest of the model is 
 
 ## Hierarchical model
 
-Since it is really difficult to assess objectively the home advantage and the attacking and offensive capabilities of the teams as we do not have a population basis, we decided to stick to the following noninformative set of hyperpriors and priors:
+Since it is really difficult to assess objectively the home advantage and the attacking and offensive capabilities of the teams as we do not have a population basis, we decided to stick to the following non informative set of hyperpriors and priors:
 
 $$
-\mu_{att} \sim \text{Normal}(0, 100) \\
-\tau_{att} \sim \text{Gamma}(0.1, 0.1) \\
-\mu_{def} \sim \text{Normal}(0, 100) \\
-\tau_{def} \sim \text{Gamma}(0.1, 0.1)
+\sigma_{att} \sim \text{Gamma}(5, 15) \\
+\sigma_{def} \sim \text{Gamma}(5, 15)
 $$
 
 $$
@@ -123,7 +140,7 @@ This way, we hoped that the prior distributions will play a minimal role in the 
 
 ## Separate model
 
-For the same reasons, the team-specific effects (for each team $t$ in $1,...,T$) are modelled as follows in the separate model:
+For the same reasons, the team-specific effects (for each team $t$ in $1,...,T$) are modeled as follows in the separate model:
 $$
 \text{att}_t \sim \text{Normal}(0, 1) \\
 \text{def}_t \sim \text{Normal}(0, 1)
@@ -139,17 +156,17 @@ $$
 The number of goals scored by the home and by the away team in the g-th game of the season, where g indicates the game and $g=1,..,G=279$ is modeled as independent Poisson distribution for each team. We model the vector of observed goals $y=(y_{g1}, y_{g2})$ as
 
 
-$y_{gj} | \lambda_{gj} \sim Poisson(\lambda_{gj})$
+$y_{gj} | \_{gj} \sim Poisson(\lambda_{gj})$
 
 
 where the parameters $\lambda=(\lambda_{g1}, \lambda_{g2})$ represent the scoring intensity in the g-th game for the team playing at home (j=1) and away (j=2), respectively. These parameters are modeled using a log-linear random effect model
 
+$$
+log(\lambda_{g1}) = home + att_{h(g)} + def_{a(g)}$, $\lambda_{g1} = \exp(home + att_{h(g)} + def_{a(g)})
 
-$log(\lambda_{g1}) = home + att_{h(g)} + def_{a(g)}$, $\lambda_{g1} = \exp(home + att_{h(g)} + def_{a(g)})$
 
-
-$log(\lambda_{g2}) = att_{a(g)} + def_{h(g)}$, $\lambda_{g2} = \exp(att_{a(g)} + def_{h(g)})$
-
+log(\lambda_{g2}) = att_{a(g)} + def_{h(g)}$, $\lambda_{g2} = \exp(att_{a(g)} + def_{h(g)})
+$$
 
 
 where $h(g)$ and $a(g)$ indicates the teams which played g-th game, and $h(g), a(g) = 1,..,T$ 
@@ -190,6 +207,9 @@ data {
   int<lower=0> next_N;
   int next_hometeam[next_N];
   int next_awayteam[next_N];
+
+  real<lower=0> sigma_att;
+  real<lower=0> sigma_def;
 }
 
 
@@ -224,8 +244,8 @@ model {
   home ~ normal(0,100);
   
   for (t in 1:nteams){
-    att_star[t] ~ normal(0, 1);
-    def_star[t] ~ normal(0, 1);
+    att_star[t] ~ normal(0, sigma_att);
+    def_star[t] ~ normal(0, sigma_def);
   }
   
   for (g in 1:N) {
@@ -241,6 +261,9 @@ generated quantities {
   int next_y1[next_N];
   int next_y2[next_N];
   vector[N] log_lik[2];
+  real y_rep1[N];
+  real y_rep2[N];
+  
   
   for (g in 1:next_N){
     // Average Scoring intensities (accounting for mixing components)
@@ -253,12 +276,15 @@ generated quantities {
   }
   
    for (g in 1:N){
+      y_rep1[g] = poisson_rng(lambda[g,1]);
+      y_rep2[g] = poisson_rng(lambda[g,2]);
       log_lik[1,g] = poisson_lpmf(y1[g] | lambda[g,1]);
       log_lik[2,g] = poisson_lpmf(y2[g] | lambda[g,2]);
 }
   
   
 }
+
 
 ```
 
@@ -285,7 +311,7 @@ $\sum_{t=1}^{T} att_t = 0$, $\sum_{t=1}^{T} def_t = 0$
 
 The hyper-priors of the attack and defense effects are modeled independently using flat prior distributions:
 
-$\sigma_{att} \sim Gamma(0.1,0.1)$, $\sigma_{def} \sim Gamma(0.1,0.1)$
+$\sigma_{att} \sim Gamma(5,15)$, $\sigma_{def} \sim Gamma(5,15)$
 
 The rest of the model design is common for separate and hierarchical models.
 
@@ -307,10 +333,8 @@ data {
 
 parameters {
   //hyperparameters
-  // real mu_att;
   real<lower=0> sigma_att;
   
-  // real mu_def;
   real<lower=0> sigma_def;
   
   //parameters
@@ -336,6 +360,7 @@ transformed parameters{
     // Average Scoring intensities (accounting for mixing components)
     lambda[g,1] = exp(home + att[hometeam[g]] + def[awayteam[g]]);
     lambda[g,2] = exp(att[awayteam[g]] + def[hometeam[g]]);
+    
   }
 }
 
@@ -343,10 +368,8 @@ transformed parameters{
 model {
   home ~ normal(0,100);
   
-  // mu_att ~ normal(0,100) T[0,];
   sigma_att ~ gamma(5,15);
-  
-  // mu_def ~ normal(0,100) T[0,];
+
   sigma_def ~ gamma(5,15);
   
   for (t in 1:nteams){
@@ -367,6 +390,8 @@ generated quantities {
   int next_y1[next_N];
   int next_y2[next_N];
   vector[N] log_lik[2];
+  real y_rep1[N];
+  real y_rep2[N];
   
   for (g in 1:next_N){
     // Average Scoring intensities (accounting for mixing components)
@@ -379,16 +404,22 @@ generated quantities {
   }
   
      for (g in 1:N){
+      y_rep1[g] = poisson_rng(lambda[g,1]);
+      y_rep2[g] = poisson_rng(lambda[g,2]);
       log_lik[1,g] = poisson_lpmf(y1[g] | lambda[g,1]);
       log_lik[2,g] = poisson_lpmf(y2[g] | lambda[g,2]);
 }
 }
+
+
 ```
 
 
 Here, using unobservable hyperparameters $\sigma_{att}$, $\sigma_{def}$, the inherent hierarchical nature implies a form of correlation between observable variables $y_{g1}$ and $y_{g2}$. 
 
-# 6. How to the Stan model was run, that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
+# 6. How to the Stan model was run, that is, what options were used. 
+
+For Separate model we run 4 chains with 12000 iteration, half of which are warm up. 
 
 ```{r eval=FALSE}
 stan_data <- list(N=nrow(df_res), nteams=length(unique(df_res$home.team)), y1=df_res$h.g., y2=df_res$a.g, hometeam=df_res$home.team, awayteam=df_res$away.team,
@@ -398,23 +429,25 @@ sm <- rstan::stan_model(file = "football_separate.stan")
 model_separate <- rstan::sampling(sm, data = stan_data, chains=4, iter=12000, seed=42)
 ```
 
+For Hierarchical model 4 chains with 2000 iterations, 1000 warm up rounds were sufficient. 
 ```{r eval=FALSE}
 sm <- rstan::stan_model(file = "model_init.stan")
-model_hierarchical <- rstan::sampling(sm, data = stan_data, iter=10000, warmup=2000,
-                                      control = list(adapt_delta = 0.99, max_treedepth = 15), seed=42)
+model_hierarchical <- rstan::sampling(sm, data = stan_data, seed=42)
 ```
+
+
 # 7. Convergence diagnostics (R, ESS, divergences) and what was done if the convergence was not good with the first try.
 
 ## $\hat{R}$: potential scale reduction statistic
 
 $\hat{R}$ statistic measures the ratio of the average variance of draws within each chain to the variance of the pooled draws across chains. In case the chains have not converged to a common distribution, the $\hat{R}$ statistic will be greater than one. 
 
-We can see from the plot of $\hat{R}$ values of separate model that all values are close to one, thus the model have converged. 
+We can see from the plot of $\hat{R}$ values of separate model that all values are close to 1, thus the model has converged. 
 ```{r}
 rhats_sep <- rhat(model_separate)
 mcmc_rhat(rhats_sep)
 ```
-We also conclude that hierarchical model have converged as all of $\hat{R}$ values are around 1, thus the model have converged.
+We also conclude that hierarchical model have converged as all of $\hat{R}$ values are around 1, thus the model has converged.
 ```{r}
 rhats_hier <- rhat(model_hierarchical)
 mcmc_rhat(rhats_hier)
@@ -430,7 +463,7 @@ ratios_sep <- neff_ratio(model_separate)
 mcmc_neff(ratios_sep)
 ```
 
-For hierarchical model there are some parameters with ratio on $n_{eff}$ to $N$ less than 0.1. We probably have autocorrelation for those parameters, and it means that model is needed to be run with more iterations. 
+For hierarchical model there are also no parameters with ratio on $n_{eff}$ to $N$ less than 0.1, we do not have autocorrelation. 
 ```{r}
 ratios_hier <- neff_ratio(model_hierarchical)
 mcmc_neff(ratios_hier)
@@ -448,60 +481,68 @@ sum(divergent)
 ``` 
 For separate model during the first try the default number of iterations which is 2000 were performed, and Bulk Effective Sample Size was too low. We needed to increase the number of iterations to 12000 as with fewer iterations $\hat{R}$ values were acceptable, but ratios on $n_{eff}$ to $N$ for some parameters were still lower than 0.1 with less number of iterations.
 
+Running hierarchical model with default parameters was enough for model convergence.
+
 
 
 # 8. Posterior predictive checks and what was done to improve the model.
 
 
 ## Separate model posterior predictive checks
-Compare histogram of $y_{g1}$ and $y_{g2}$ to histograms of $y\_rep_{g1}$ and $y\_rep_{g2}$
+For posterior predictive checks we reproduce predictions $y\_rep_{g1}$ and $y\_rep_{g2}$ for each game using proposed models and check results for validity. 
+Comparing histogram of $y_{g1}$ to histograms of $y\_rep_{g1}$, we can see that posterior draws for goals scored by the home team are reasonable for separate model, but sometimes separate model predicts values which are too high, for example scores equal to 9-10.
 
 ```{r}
 y_rep1_sep <- as.matrix(model_separate, pars='y_rep1')
 y_1 <- df_res$h.g.
 ppc_hist(y_1, y_rep1_sep[1:8, ], bandwidth=1)
 ```
-
+Comparing histogram of $y_{g2}$ to histograms of $y\_rep_{g2}$, we can see that posterior draws for goals scored by the away team are reasonable for separate model.
 ```{r}
 y_rep2_sep <- as.matrix(model_separate, pars='y_rep2')
 y_2 <- df_res$a.g.
 ppc_hist(y_2, y_rep2_sep[1:8, ], bandwidth=1)
 ```
 
-Compare density estimate of $y_{g1}$ and $y_{g2}$ to density estimates of a bunch of $y\_rep_{g1}$ and $y\_rep_{g2}$
+Compare density estimate of $y_{g1}$ and $y_{g2}$ to density estimates of a bunch of $y\_rep_{g1}$ and $y\_rep_{g2}$.
+For scores of the home teams let's look at a comparison of the distribution of $y_{g1}$ and the distributions of some of the simulated by separate model datasets in the $y\_rep_{g1}$ matrix. In the plot below, the dark line is the distribution of the observed outcomes $y_{g1}$ and each of the 100 lighter lines is the kernel density estimate of one of the replications of $y_{g1}$ from the posterior predictive distribution (i.e., one of the rows in $y\_rep_{g1}$). This plot makes it easy to see that separate model predicts higher values then observed ones. 
 
 ```{r}
 ppc_dens_overlay(y_1, y_rep1_sep[1:100, ])
 ```
-
+For scores of the away teams let's look at a comparison of the distribution of $y_{g2}$ and the distributions of some of the simulated by separate model datasets in the $y\_rep_{g2}$ matrix. Overall distributions look similar, but sometimes separate model predicts more zeros then there are zeros in observed data.
 ```{r}
 ppc_dens_overlay(y_2, y_rep2_sep[1:100, ])
 ```
 
 Compare proportions of zeros in $y_{g1}$ and $y_{g2}$ to the distribution of that proportion over all $y\_rep_{g1}$ and $y\_rep_{g2}$
 
+We can see from plot below, that actual proportion of zeros in observed data of home team scores is lower then the proportion of zeros in predictions generated by separate model. 
 ```{r}
 prop_zero <- function(x) mean(x == 0)
 print(prop_zero(y_1))
 ppc_stat(y_1, y_rep1_sep, stat="prop_zero")
 ```
-
+Plot shows that proportion of zeros in observed away team scores mostly lower than predictions of proportion of zeros by separate model.
 ```{r}
 print(prop_zero(y_2))
 ppc_stat(y_2, y_rep2_sep, stat="prop_zero")
 ```
 
-Two statistics in a scatterplot
+Two statistics in a scatterplot.
+
+Comparison of mean and variance statistics for observed home team scores and predicted by separate model demonstrates that both means and variances of predicted values tend to be higher then actual values.
 
 ```{r}
 ppc_stat_2d(y_1, y_rep1_sep, stat=c("mean", "sd"))
 ```
 
+The same could be concluded for away team scores, means and variances are tend to be higher then actual ones.
 ```{r}
 ppc_stat_2d(y_2, y_rep2_sep, stat=c("mean", "sd"))
 ```
 
-Distribution of predictive errors
+Distribution of predictive errors for home team and away team scores.
 
 ```{r}
 ppc_error_hist(y_1, y_rep1_sep[1:4, ], bandwidth=1) + xlim(-10, 10)
@@ -511,7 +552,7 @@ ppc_error_hist(y_2, y_rep2_sep[1:4, ], bandwidth=1) + xlim(-10, 10)
 ```
 
 ## Hierarchical model posterior predictive checks
-Compare histogram of $y_{g1}$ and $y_{g2}$ to histograms of $y\_rep_{g1}$ and $y\_rep_{g2}$
+Compare histogram of $y_{g1}$ and $y_{g2}$ to histograms of $y\_rep_{g1}$ and $y\_rep_{g2}$, respectively. We can see that hierarchical model does not predict values as high as separate model for home teams.
 
 ```{r}
 y_rep1_hier <- as.matrix(model_hierarchical, pars='y_rep1')
@@ -523,7 +564,7 @@ y_rep2_hier <- as.matrix(model_hierarchical, pars='y_rep2')
 ppc_hist(y_2, y_rep2_hier[1:8, ], bandwidth=1)
 ```
 
-Compare density estimate of $y_{g1}$ and $y_{g2}$ to density estimates of a bunch of $y\_rep_{g1}$ and $y\_rep_{g2}$
+Compare density estimate of $y_{g1}$ and $y_{g2}$ to density estimates of a bunch of $y\_rep_{g1}$ and $y\_rep_{g2}$ respectively. Comparing distributions of observed and predicted values both for the home and away teams, for home teams there are occasions when hierarchical model predict values which are too high, and for the away teams there are predictions with too many zero scores.
 
 ```{r}
 ppc_dens_overlay(y_1, y_rep1_hier[1:100, ])
@@ -533,7 +574,7 @@ ppc_dens_overlay(y_1, y_rep1_hier[1:100, ])
 ppc_dens_overlay(y_2, y_rep2_hier[1:100, ])
 ```
 
-Compare proportions of zeros in $y_{g1}$ and $y_{g2}$ to the distribution of that proportion over all $y\_rep_{g1}$ and $y\_rep_{g2}$
+Compare proportions of zeros in $y_{g1}$ and $y_{g2}$ to the distribution of that proportion over all $y\_rep_{g1}$ and $y\_rep_{g2}$. predicted proportions of zeros are tend to be higher for home teams, but overall separate model performs worse than hierarchical in this case. Predictions of proportion of zeros for away teams are higher than observed ones.
 
 ```{r}
 prop_zero <- function(x) mean(x == 0)
@@ -546,7 +587,9 @@ print(prop_zero(y_2))
 ppc_stat(y_2, y_rep2_hier, stat="prop_zero")
 ```
 
-Two statistics in a scatterplot
+Two statistics in a scatterplot.
+
+For home teams predicted values generated by hierarchical model have means and variances more similar to observed ones than predictions of separate model. The same can be said for scores of away teams.
 
 ```{r}
 ppc_stat_2d(y_1, y_rep1_hier, stat=c("mean", "sd"))
@@ -556,7 +599,7 @@ ppc_stat_2d(y_1, y_rep1_hier, stat=c("mean", "sd"))
 ppc_stat_2d(y_2, y_rep2_hier, stat=c("mean", "sd"))
 ```
 
-Distribution of predictive errors
+Distribution of predictive errors for home and away teams.
 
 ```{r}
 ppc_error_hist(y_1, y_rep1_hier[1:4, ], bandwidth=1) + xlim(-10, 10)
@@ -628,7 +671,7 @@ loo_compare(loo_sep, loo_hierarchical)
 # 10. Predictive performance assessment.
 
 
-Based on the results that we obtained from the generated quantities blocks, a nice qualitative performance assessment that we can do is to look at the predicted ligue 1 table and see if the results make sense in both models.
+Based on the results that we obtained from the generated quantities blocks, a nice qualitative performance assessment that we can do is to look at the predicted Ligue 1 table and see if the results make sense in both models.
 
 First of all let's build and display the league table from the matches that were actually played during the 2019-2020 season:
 ```{r}
@@ -760,7 +803,7 @@ predict(table=sep_predicted_table, model = model_separate, threshold=0.2)
 ```
 
 
-The information relative to the goal scored and conceided have been hidden since the values are modeled with the mean values that do not correspond to integers. Because of this, the goal difference predicted for games is also never exactly equal to 0 (meaning that the model will never predict draws). Hence, we have manually tuned threshold values to ensure that the proportion of draws predicted is close enough to the proportion of draws observed in real life.
+The information relative to the goal scored and coincided have been hidden since the values are modeled with the mean values that do not correspond to integers. Because of this, the goal difference predicted for games is also never exactly equal to 0 (meaning that the model will never predict draws). Hence, we have manually tuned threshold values to ensure that the proportion of draws predicted is close enough to the proportion of draws observed in real life.
 
 As we expected the separate model does not have the tendency of the hierarchical to pull the extreme points values towards the mean: 
 * The hierarchical model predicts that a good team like Lille will obtain 20 additional points each while the separate models is more optimistic for then with 24 points.
@@ -792,8 +835,8 @@ difference(sorted_current_table, predict(table=sep_predicted_table, model = mode
 ```
 
 
-## 11. Sensitivity analysis with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
-
+## 11. Sensitivity analysis with respect to prior choices 
+Trying different priors for separate model
 $att_t \sim N(0, 100)$, $def_t \sim N(0, 100)$
 
 ```{r}
@@ -809,8 +852,9 @@ loo_sep_10 <- compute_psis_loo(model_separate_10)
 
 loo_compare(loo_sep_100, loo_sep_10, loo_sep)
 ```
+We can conclude that priors $att_t \sim N(0, 1)$, $def_t \sim N(0, 1)$ are better for separate model according to PSIS-LOO diagnostic.
 
-
+Trying different priors for hierarchical model.
 $\sigma_{att} \sim Gamma(10,10)$, $\sigma_{def} \sim Gamma(10,10)$
 
 ```{r}
@@ -826,14 +870,15 @@ loo_h_5_10 <- compute_psis_loo(model_hierarchical_5_10)
 
 loo_compare(loo_h_10_10, loo_h_5_10, loo_hierarchical)
 ```
-
+The difference between proposed priors is not significantly different according to PSIS-LOO diagnostic. 
 # 12. Discussion of issues and potential improvements.
 
 
 From a footballing perspective, our model is not tacking into account some important aspects that might have an impact the performances on the pitch. In particular, the fatigue coming from the match repetition, especially for the team that are still engaged in other competitions, is not modelled here. For instance, Paris reached the final of the UEFA Champion's League this year while Lyon lost in the semi-finals round against Bayern and both were qualified for the final rounds of the Coupe De France. Without a doubt, this would have had a negative impact on their performances in Ligue 1. 
-An other interesting case would be Lille. They struggled a lot during the first half of the season, but when they started playing only once a week after 2 early eliminations from the Champion's League and Coupe De France, they have started winning consistantly and looked like they would be able to continue on the same run of form for the rest of the season. Conversely, Bordeaux did have a solid first half of the season but did not have the same momentum towards the last few games. We believe that managing (somehow) to introduce this idea of momentum inside the model would have give more accurate predictions.
+An other interesting case would be Lille. They struggled a lot during the first half of the season, but when they started playing only once a week after 2 early eliminations from the Champion's League and Coupe De France, they have started winning consistently and looked like they would be able to continue on the same run of form for the rest of the season. Conversely, Bordeaux did have a solid first half of the season but did not have the same momentum towards the last few games. We believe that managing (somehow) to introduce this idea of momentum inside the model would have give more accurate predictions.
 
 
-13. Conclusion what was learned from the data analysis.
-14. Self-reflection of what the group learned while making the project.
-
+# 13. Conclusion what was learned from the data analysis.
+The topic chosen for our project is initially quite interesting, being able to predict football match results based on a team's previous performance is challenging. During the project realization we performed thorough analysis on previous researches of the case, we learned how to design a mathematical model to solve the problem, what is identifiability constraint and what measures could be done to impose these constraints, why hierarchical model is suitable for this kind of task, and what could be done to enhance the performance of the hierarchical model. Additionally we got solid understanding of log-linear random effect models and how the parameters learned during the simulation can be interpreted. 
+# 14. Self-reflection of what the group learned while making the project.
+Along with hierarchical model suggested by previous researches we designed separate model to compare it to the results of hierarchical model. And as results suggest even if hierarchical model performs better, separate model also has it's advantages and performs quite well. Also, techniques to tune the parameters for Stan model, to compare model results as PSIS-LOO, to chose appropriate priors, to perform predictive posteriors checks were used and some deeper understandings of these techniques were gained. 

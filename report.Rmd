@@ -777,7 +777,7 @@ As we expected the separate model does not have the tendency of the hierarchical
 * The hierarchical model predicts that Dijon, a team playing in the bottom half of the table, will obtain 6 additional points each while the separate models is more pessimistic with only 4 points.
 * Other major changes in prediction included a tighter 3rd place race between Lille and Rennes with the separate model.
 
-However, for the most part, both models predicted a very similar final tables where the major changes compared to the 'freezed season' include a surprising come back from Bordeaux which would have seen them ending up in the Europa league spots alongside Lyon (instead of Nice and Reims). Both also predict a major fall from grace for Reims and Angers, typically defensive sides, but also Monaco one of the best attack of the division but who struggled a lot on the defensive side.
+However, for the most part, both models predicted a very similar final tables where the major changes compared to the 'freezed season' include a surprising come back from Bordeaux which would have seen them ending up in the Europa league spots alongside Lyon (instead of Nice and Reims). Both also predict a major fall from grace for Reims and Angers, typically defensive sides, but also for Monaco, one of the best attack of the division, who struggled a lot more on the defensive side.
 Here are the predicted progressions and regressions in the table compared to the freezed table:
 ```{r}
 
@@ -850,6 +850,12 @@ Modelling the number of goal scored by each team has two issues. Firstly, the mo
 
 
 
-13. Conclusion what was learned from the data analysis.
+# 13. Conclusion what was learned from the data analysis.
+
+
+Our 2019-20 Ligue 1 prediction models were able to predict some significant changes in the league table if the French teams were to play the 10 remaining games of that season. However, those predicted changes do not occur in the relegation spots as Toulouse and Amiens are still predicted to finish last and second-last these season, nor in the Champions League group stages qualifying spots as Paris and Marseille are predicted to end up in the first and second place. For the 3rd place race however, there could be arguments for Rennes or Lille and both team would have undoubtedly offer us a breathtaking finish with a lot of suspence.
+
+
+
 14. Self-reflection of what the group learned while making the project.
 

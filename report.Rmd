@@ -56,7 +56,7 @@ Considering the fact that our research question is derived from a recent event a
 
 Data set contains home team name, away team name, identifier for a home team, identifier for an away team, number of goals scored by home team and number of goals scored by away team. The Table 1 demonstrates basic structure of the data, we also can see that team identifiers are uniquely associated with each team. For example, 'Nice' always associated with identifier 11, whether they play home or away, as in the games 228 and 146. 
 
-```{r, echo=FALSE, results='asis'}
+```{r, echo=FALSE, results='asis', message=FALSE}
 set.seed(42)
 Sys.setlocale('LC_ALL','C')
 df_merged = merge(df_res, df_teams, by.x='home.team', by.y = 'index')
@@ -90,6 +90,8 @@ The home advantage is modeled by the random variable home.
 Thus, the scoring rate $\theta$ for both team during the g-th game of the season is defined with a log-linear random effect model:
 $$
 \text{log}(\theta_{g,1}) = \text{home} + \text{att}_{h(g)} + \text{def}_{a(g)} \\
+
+
 \text{log}(\theta_{g,2}) = \text{att}_{a(g)} + \text{def}_{h(g)}
 $$
 How should one understand this formula? Well, notice in the second formula how the value of the scoring intensity of the away team $\theta_{g,2}$ is high if its attacking capability $\text{att}_{a(g)}$ is high or if the defensive capability of the home team $\text{def}_{h(g)}$ is high (defensive capabilities are always negative in this definition). Same thing could be said for the first formula but with the addition of the team advantage variable.
@@ -97,6 +99,8 @@ How should one understand this formula? Well, notice in the second formula how t
 There is a small catch however. In order to achieve identifiability of the above model parameters and facilitate the interpretation the results in the end, we have to use a standard set of constraints on the $\text{att}$ and $\text{def}$ variables. The authors opted for a sum-to-zero constraint (which is simply equivalent to centering the variables $\text{att}$ and $\text{def}$):
 $$
 \sum_{t=1}^T \text{att}_{t} = 0 \\
+
+
 \sum_{t=1}^T \text{def}_{t} = 0
 $$
 
@@ -109,6 +113,8 @@ $$
 In our own model, we found out that the attacking and defending hyperpriors did not need to be defined as strictly as they are in the paper. In particular, since we only care about the spreading of the team-specific effect $att_t$ and $def_t$ to differentiate the teams (the information about the mean values are lost with the sum-to-zero constraint), we figured out that we might as well eliminate the hyperpriors relative to the mean values and model the team specific effect simply as:
 $$
 \text{att}_t \sim \text{Normal}(0, \sigma_{att}) \\
+
+
 \text{def}_t \sim \text{Normal}(0, \sigma_{def})
 $$
 The MCMC sampling has proved to be way faster with our model than the one in the paper with the addition of $\mu_{att}$ and $\mu_{def}$ while maintaining sensible results.
@@ -150,50 +156,11 @@ $$
 
 # 5. Stan code.
 
-## Common model design
-
-
-The number of goals scored by the home and by the away team in the g-th game of the season, where g indicates the game and $g=1,..,G=279$ is modeled as independent Poisson distribution for each team. We model the vector of observed goals $y=(y_{g1}, y_{g2})$ as
-
-
-$y_{gj} | \_{gj} \sim Poisson(\lambda_{gj})$
-
-
-where the parameters $\lambda=(\lambda_{g1}, \lambda_{g2})$ represent the scoring intensity in the g-th game for the team playing at home (j=1) and away (j=2), respectively. These parameters are modeled using a log-linear random effect model
-
-$$
-log(\lambda_{g1}) = home + att_{h(g)} + def_{a(g)}$, $\lambda_{g1} = \exp(home + att_{h(g)} + def_{a(g)})
-
-
-log(\lambda_{g2}) = att_{a(g)} + def_{h(g)}$, $\lambda_{g2} = \exp(att_{a(g)} + def_{h(g)})
-$$
-
-
-where $h(g)$ and $a(g)$ indicates the teams which played g-th game, and $h(g), a(g) = 1,..,T$ 
-
-
-
 
 ## Separate model
 
 ![The DAG representation of the Separate model](/home/anar/BDA/R_projects/project/img/sep_model.png) 
 
-
-$home \sim N(0,100)$
-
-
-For each $t = 1,..,T$, the team specific effects are modeled from separate distributions:
-
-
-$att_t \sim N(0, 1)$, $def_t \sim N(0, 1)$
-
-
-We introduce sum-to zero constraint on the team-specific parameters:
-
-
-$\sum_{t=1}^{T} att_t = 0$, $\sum_{t=1}^{T} def_t = 0$
-
-The rest of the procedure is same for both models and described in common model design part.
 
 ```{stan, output.var="separate_model", eval = FALSE}
 data {
@@ -295,25 +262,6 @@ The key difference between separate and hierarchical model is that in hierarchic
 
 ![The DAG representation of the Hierarchical model](/home/anar/BDA/R_projects/project/img/hier_model.png) 
 
-$home \sim N(0,100)$
-
-
-For each $t = 1,..,T$, the team specific effects are modeled as exchangeable from a common distribution:
-
-
-$att_t \sim N(0, \sigma_{att})$, $def_t \sim N(0, \sigma_{def})$
-
-
-We introduce sum-to zero constraint on the team-specific parameters:
-
-
-$\sum_{t=1}^{T} att_t = 0$, $\sum_{t=1}^{T} def_t = 0$
-
-The hyper-priors of the attack and defense effects are modeled independently using flat prior distributions:
-
-$\sigma_{att} \sim Gamma(5,15)$, $\sigma_{def} \sim Gamma(5,15)$
-
-The rest of the model design is common for separate and hierarchical models.
 
 
 ```{stan, output.var="hierarchical_model", eval = FALSE}
@@ -422,11 +370,15 @@ Here, using unobservable hyperparameters $\sigma_{att}$, $\sigma_{def}$, the inh
 For Separate model we run 4 chains with 12000 iteration, half of which are warm up. 
 
 ```{r eval=FALSE}
-stan_data <- list(N=nrow(df_res), nteams=length(unique(df_res$home.team)), y1=df_res$h.g., y2=df_res$a.g, hometeam=df_res$home.team, awayteam=df_res$away.team,
+stan_data <- list(N=nrow(df_res), nteams=length(unique(df_res$home.team)),
+                  y1=df_res$h.g., y2=df_res$a.g, hometeam=df_res$home.team,
+                  awayteam=df_res$away.team,
                   next_N=nrow(df_next),
-                  next_hometeam=df_next$home.team, next_awayteam=df_next$away.team, sigma_att=1, sigma_def=1)
+                  next_hometeam=df_next$home.team, next_awayteam=df_next$away.team, 
+                  sigma_att=1, sigma_def=1)
 sm <- rstan::stan_model(file = "football_separate.stan")
-model_separate <- rstan::sampling(sm, data = stan_data, chains=4, iter=12000, seed=42)
+model_separate <- rstan::sampling(sm, data = stan_data, chains=4, 
+                                  iter=12000, seed=42)
 ```
 
 For Hierarchical model 4 chains with 2000 iterations, 1000 warm up rounds were sufficient. 
@@ -870,7 +822,7 @@ loo_h_5_10 <- compute_psis_loo(model_hierarchical_5_10)
 
 loo_compare(loo_h_10_10, loo_h_5_10, loo_hierarchical)
 ```
-The difference between proposed priors is not significantly different according to PSIS-LOO diagnostic. 
+The difference between proposed priors is not significant according to PSIS-LOO diagnostic. 
 # 12. Discussion of issues and potential improvements.
 
 
@@ -880,5 +832,7 @@ An other interesting case would be Lille. They struggled a lot during the first 
 
 # 13. Conclusion what was learned from the data analysis.
 The topic chosen for our project is initially quite interesting, being able to predict football match results based on a team's previous performance is challenging. During the project realization we performed thorough analysis on previous researches of the case, we learned how to design a mathematical model to solve the problem, what is identifiability constraint and what measures could be done to impose these constraints, why hierarchical model is suitable for this kind of task, and what could be done to enhance the performance of the hierarchical model. Additionally we got solid understanding of log-linear random effect models and how the parameters learned during the simulation can be interpreted. 
+
+
 # 14. Self-reflection of what the group learned while making the project.
 Along with hierarchical model suggested by previous researches we designed separate model to compare it to the results of hierarchical model. And as results suggest even if hierarchical model performs better, separate model also has it's advantages and performs quite well. Also, techniques to tune the parameters for Stan model, to compare model results as PSIS-LOO, to chose appropriate priors, to perform predictive posteriors checks were used and some deeper understandings of these techniques were gained. 

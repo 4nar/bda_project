@@ -29,9 +29,13 @@ model_separate <- readRDS("separate_model_opt.rds")
 model_hierarchical <- readRDS("model_hierarchical_5_15_upd.rds") 
 ```
 
+
+
 # 1. Introduction describing
 
+
 In 2020, because of the COVID-19 outbreak, the football world has experienced one of the biggest economic crisis in its history and national championships all around Europe had to be interrupted for several weeks. In an economy that revolves mostly around Sports broadcasting contracts, match day revenues, and player sales, to stop playing games for a long period of time is an unbearable situation. Most leagues in Europe started playing games without home and away fans, before and after their domestic lockdowns, despite the risks of contamination between the players. However, in some countries, such as France, Scotland and Belgium, national leagues had to be 'freezed' (=terminated) approximately 10 match days short compared to a regular season, not without controversy. Indeed, on top of the aforementioned economics impacts, a lot of football club representatives in those countries considered themselves wronged by this decision. Based on the following fixtures and momentum in the past few games, they felt like their team could have reached much more desirable spots in the league table (that would have allowed them to avoid relegation or to reach promotion and European competitions for instance) if they were allowed to play the remaining games. And because some teams would have arguably had easier fixtures coming up than others it is very difficult to deny those claims. In addition, there are usually a lot of surprises towards the end of a season because of the uncertain nature of the sport. In the French Ligue 1 for instance, 71% of the teams have changed places over the last 10 games of season historically.
+
 
 Also in France, numerous alternatives were proposed by club owners to avoid 'freezing' the season, and even though they were not retained in the end, one did stand out from a scientific point of view... In an interview with the French media L'Equipe in April 2020, Lille president Gerard Lopez said 'We can imagine a more scientific calculation model in which we would simulate the results of the last ten games, according to the points taken at home or away this season, to obtain a ranking after 38 games'. Such models based on Bayesian theory not only exist, but are used by bookmakers to predict the outcomes of a season. But how reliable are they in reality? What kind of impact those predictions would have had on the final Ligue 1 table? Would Lopez's team have managed to secure a place in the Champions League at the expense of Rennes or Marseille in the remaining matches? We will try to answer those questions in this report by creating our own 2020 Ligue 1 simulation model.
 
@@ -365,9 +369,11 @@ generated quantities {
 
 Here, using unobservable hyperparameters $\sigma_{att}$, $\sigma_{def}$, the inherent hierarchical nature implies a form of correlation between observable variables $y_{g1}$ and $y_{g2}$. 
 
+
 # 6. How to the Stan model was run, that is, what options were used. 
 
 For Separate model we run 4 chains with 12000 iteration, half of which are warm up. 
+
 
 ```{r eval=FALSE}
 stan_data <- list(N=nrow(df_res), nteams=length(unique(df_res$home.team)),
@@ -389,6 +395,7 @@ model_hierarchical <- rstan::sampling(sm, data = stan_data, seed=42)
 
 
 # 7. Convergence diagnostics (R, ESS, divergences) and what was done if the convergence was not good with the first try.
+
 
 ## $\hat{R}$: potential scale reduction statistic
 
@@ -762,7 +769,7 @@ As we expected the separate model does not have the tendency of the hierarchical
 * The hierarchical model predicts that Dijon, a team playing in the bottom half of the table, will obtain 6 additional points each while the separate models is more pessimistic with only 4 points.
 * Other major changes in prediction included a tighter 3rd place race between Lille and Rennes with the separate model.
 
-However, for the most part, both models predicted a very similar final tables where the major changes compared to the 'freezed season' include a surprising come back from Bordeaux which would have seen them ending up in the Europa league spots alongside Lyon (instead of Nice and Reims). Both also predict a major fall from grace for Reims and Angers, typically defensive sides, but also Monaco one of the best attack of the division but who struggled a lot on the defensive side.
+However, for the most part, both models predicted a very similar final tables where the major changes compared to the 'freezed season' include a surprising come back from Bordeaux which would have seen them ending up in the Europa league spots alongside Lyon (instead of Nice and Reims). Both also predict a major fall from grace for Reims and Angers, typically defensive sides, but also for Monaco, one of the best attack of the division, who struggled a lot more on the defensive side.
 Here are the predicted progressions and regressions in the table compared to the freezed table:
 ```{r}
 
@@ -787,8 +794,12 @@ difference(sorted_current_table, predict(table=sep_predicted_table, model = mode
 ```
 
 
-## 11. Sensitivity analysis with respect to prior choices 
+
+## 11. Sensitivity analysis with respect to prior choices
+
+
 Trying different priors for separate model
+
 $att_t \sim N(0, 100)$, $def_t \sim N(0, 100)$
 
 ```{r}
@@ -823,16 +834,35 @@ loo_h_5_10 <- compute_psis_loo(model_hierarchical_5_10)
 loo_compare(loo_h_10_10, loo_h_5_10, loo_hierarchical)
 ```
 The difference between proposed priors is not significant according to PSIS-LOO diagnostic. 
+
+
+
 # 12. Discussion of issues and potential improvements.
 
 
 From a footballing perspective, our model is not tacking into account some important aspects that might have an impact the performances on the pitch. In particular, the fatigue coming from the match repetition, especially for the team that are still engaged in other competitions, is not modelled here. For instance, Paris reached the final of the UEFA Champion's League this year while Lyon lost in the semi-finals round against Bayern and both were qualified for the final rounds of the Coupe De France. Without a doubt, this would have had a negative impact on their performances in Ligue 1. 
-An other interesting case would be Lille. They struggled a lot during the first half of the season, but when they started playing only once a week after 2 early eliminations from the Champion's League and Coupe De France, they have started winning consistently and looked like they would be able to continue on the same run of form for the rest of the season. Conversely, Bordeaux did have a solid first half of the season but did not have the same momentum towards the last few games. We believe that managing (somehow) to introduce this idea of momentum inside the model would have give more accurate predictions.
+
+An other interesting case would be Lille. They struggled a lot during the first half of the season, but when they started playing only once a week after 2 early eliminations from the Champion's League and Coupe De France, they have started winning consistantly and looked like they would be able to continue on the same run of form for the rest of the season. Conversely, Bordeaux did have a solid first half of the season but did not have the same momentum towards the last few games. We believe that managing (somehow) to introduce this idea of momentum inside the model would have give more accurate predictions.
+But obviously, one could think of many other variables that could have an impact on the result and include them in the model to build more robust predictions.
+
+Modelling the number of goal scored by each team has two issues. Firstly, the model cannot differenciate a team that has been dominating the game from another that has been very fortunate if the scoreline is the same. This is a problem as a scoreline does not necesserely give all the information about the strengh of a team, especially in a sport like football were big teams frequently lose against mildly succesful sides. Considering an "advanced" metric like expected goals (xG) instead of actual goals could make some improvements in that regard. Seccondly, we have faced an issue when it comes to decide if a game would end up in a draw. If we take the mean number of goal scored by each from 1000 or 2000 sampled values, there are very little chance that the 2 values would be exactly the same, meaning that the match would not be predicted as a draw. Hence, it becomes very difficult to predict the actual game table with this method. Using a threshold allowed us to end up with an actual league table but the approach can be questionable, one could have use each sequence of draws individually to predict a lot of plausible league tables and then look at the frequencies for each team to end up at each position.
+
 
 
 # 13. Conclusion what was learned from the data analysis.
+
+
+Our 2019-20 Ligue 1 prediction models were able to predict some significant changes in the league table if the French teams were to play the 10 remaining games of that season. However, those predicted changes do not occur in the relegation spots as Toulouse and Amiens are still predicted to finish last and second-last these season, nor in the Champions League group stages qualifying spots as Paris and Marseille are predicted to end up in the first and second place. For the 3rd place race however, there could be arguments for Rennes or Lille and both team would have undoubtedly offer us a breathtaking finish with a lot of suspence.
+
 The topic chosen for our project is initially quite interesting, being able to predict football match results based on a team's previous performance is challenging. During the project realization we performed thorough analysis on previous researches of the case, we learned how to design a mathematical model to solve the problem, what is identifiability constraint and what measures could be done to impose these constraints, why hierarchical model is suitable for this kind of task, and what could be done to enhance the performance of the hierarchical model. Additionally we got solid understanding of log-linear random effect models and how the parameters learned during the simulation can be interpreted. 
 
+You can find the GitHub project repository through the following link: https://github.com/4nar/bda_project
 
-# 14. Self-reflection of what the group learned while making the project.
+
+
+# 14. Self-reflection on what the group learned while making the project.
+
+
 Along with hierarchical model suggested by previous researches we designed separate model to compare it to the results of hierarchical model. And as results suggest even if hierarchical model performs better, separate model also has it's advantages and performs quite well. Also, techniques to tune the parameters for Stan model, to compare model results as PSIS-LOO, to chose appropriate priors, to perform predictive posteriors checks were used and some deeper understandings of these techniques were gained. 
+
+During the project, we have discovered how useful and powerful bayesian inference and MCMC methods can be to design very accurate models. At first glance, predicting the outcome football games looked like an impossible tasks, but in the end, simple models like the one we designed in 3 weeks were already able to make sensible predictions. The possibilities to apply the same precepts in industrial context are incredibely wide and we think that understanding and somewhat mastering these methods will be essential for any good Data Scientist in the future.

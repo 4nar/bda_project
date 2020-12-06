@@ -29,7 +29,10 @@ model_separate <- readRDS("separate_model_opt.rds")
 model_hierarchical <- readRDS("model_hierarchical_5_15.rds") 
 ```
 
+
+
 # 1. Introduction describing
+
 
 In 2020, because of the COVID-19 outbreak, the football world has experienced one of the biggest economic crisis in its history and national championships all around Europe had to be interrupted for several weeks. In an economy that revolves mostly around Sports broadcasting contracts, match day revenues, and player sales, stop playing games for a long period of time is an unbearable situation. Most leagues in Europe started playing games without home and away fans, before and after their domestic lockdowns, despite the risks of contamination between the players. However, in some countries, such as France, Scotland and Belgium, national leagues had to be 'freezed' (=terminated) approximately 10 match days short compared to a regular season, not without controversy. Indeed, on top of the aforementioned economics impacts, a lot of football club representatives in those countries considered themselves wronged by this decision. Based on the following fixtures and momentum in the past few games, they felt like their team could have reached much more desirable spots in the league table (that would have allowed them to avoid relegation or to reach promotion and european competitions for instance) if they were allowed to play the remaining games. And because some teams would have arguably had easier fixtures coming up than others it is very difficult to deny those claims. In addition, there are usually a lot of surprises towards the end of a season because of the uncertain nature of the sport. In the French Ligue 1 for instance, 71% of the teams have changed places over the last 10 games of season historically.
 
@@ -388,7 +391,10 @@ generated quantities {
 
 Here, using unobservable hyperparameters $\sigma_{att}$, $\sigma_{def}$, the inherent hierarchical nature implies a form of correlation between observable variables $y_{g1}$ and $y_{g2}$. 
 
+
+
 # 6. How to the Stan model was run, that is, what options were used. This is also more clear as combination of textual explanation and the actual code line.
+
 
 ```{r eval=FALSE}
 stan_data <- list(N=nrow(df_res), nteams=length(unique(df_res$home.team)), y1=df_res$h.g., y2=df_res$a.g, hometeam=df_res$home.team, awayteam=df_res$away.team,
@@ -403,7 +409,11 @@ sm <- rstan::stan_model(file = "model_init.stan")
 model_hierarchical <- rstan::sampling(sm, data = stan_data, iter=10000, warmup=2000,
                                       control = list(adapt_delta = 0.99, max_treedepth = 15), seed=42)
 ```
+
+
+
 # 7. Convergence diagnostics (R, ESS, divergences) and what was done if the convergence was not good with the first try.
+
 
 ## $\hat{R}$: potential scale reduction statistic
 
@@ -792,7 +802,9 @@ difference(sorted_current_table, predict(table=sep_predicted_table, model = mode
 ```
 
 
+
 ## 11. Sensitivity analysis with respect to prior choices (i.e. checking whether the result changes a lot if prior is changed)
+
 
 $att_t \sim N(0, 100)$, $def_t \sim N(0, 100)$
 
@@ -832,6 +844,10 @@ loo_compare(loo_h_10_10, loo_h_5_10, loo_hierarchical)
 
 From a footballing perspective, our model is not tacking into account some important aspects that might have an impact the performances on the pitch. In particular, the fatigue coming from the match repetition, especially for the team that are still engaged in other competitions, is not modelled here. For instance, Paris reached the final of the UEFA Champion's League this year while Lyon lost in the semi-finals round against Bayern and both were qualified for the final rounds of the Coupe De France. Without a doubt, this would have had a negative impact on their performances in Ligue 1. 
 An other interesting case would be Lille. They struggled a lot during the first half of the season, but when they started playing only once a week after 2 early eliminations from the Champion's League and Coupe De France, they have started winning consistantly and looked like they would be able to continue on the same run of form for the rest of the season. Conversely, Bordeaux did have a solid first half of the season but did not have the same momentum towards the last few games. We believe that managing (somehow) to introduce this idea of momentum inside the model would have give more accurate predictions.
+But obviously, one could think of many other variables that could have an impact on the result and include them in the model to build more robust predictions.
+
+Modelling the number of goal scored by each team has two issues. Firstly, the model cannot differenciate a team that has been dominating the game from another that has been very fortunate if the scoreline is the same. This is a problem as a scoreline does not necesserely give all the information about the strengh of a team, especially in a sport like football were big teams frequently lose against mildly succesful sides. Considering an "advanced" metric like expected goals (xG) instead of actual goals could make some improvements in that regard. Seccondly, we have faced an issue when it comes to decide if a game would end up in a draw. If we take the mean number of goal scored by each from 1000 or 2000 sampled values, there are very little chance that the 2 values would be exactly the same, meaning that the match would not be predicted as a draw. Hence, it becomes very difficult to predict the actual game table with this method. Using a threshold allowed us to end up with an actual league table but the approach can be questionable, one could have use each sequence of draws individually to predict a lot of plausible league tables and then look at the frequencies for each team to end up at each position.
+
 
 
 13. Conclusion what was learned from the data analysis.
